@@ -6,7 +6,8 @@ const WORLD_W = 6000;
 const WORLD_H = 4000;
 const DEG = Math.PI / 180;
 const BATTERY_ARC = 14 * DEG;
-const ENGAGE_RANGE = 700; // enemy AI's preferred gun range
+const ENGAGE_RANGE = 1000; // enemy AI's preferred gun range
+const MM_W = 190; // minimap width; height follows world aspect
 
 export class SandboxScene extends Phaser.Scene {
   constructor() {
@@ -49,6 +50,7 @@ export class SandboxScene extends Phaser.Scene {
     this.touch = { active: false, steer: 0, throttle: 0, fire: false };
     if (this.sys.game.device.input.touch) this.createTouchControls();
 
+    this.createMinimap();
     const uiPos = this.toUI(12, 10);
     this.hud = this.add.text(uiPos.x, uiPos.y, '', { fontFamily: 'monospace', fontSize: 15, color: '#9fd8ff' })
       .setScrollFactor(0).setDepth(10).setScale(1 / this.zoomFactor);
@@ -63,6 +65,37 @@ export class SandboxScene extends Phaser.Scene {
   toUI(sx, sy) {
     const w = this.scale.width / 2, h = this.scale.height / 2;
     return { x: (sx - w) / this.zoomFactor + w, y: (sy - h) / this.zoomFactor + h };
+  }
+
+  createMinimap() {
+    this.mmH = Math.round(MM_W * (WORLD_H / WORLD_W));
+    this.minimap = this.add.graphics().setScrollFactor(0).setDepth(15)
+      .setScale(1 / this.zoomFactor);
+    const place = () => {
+      const pos = this.toUI(this.scale.width - MM_W - 14, 14);
+      this.minimap.setPosition(pos.x, pos.y);
+    };
+    place();
+    this.scale.on('resize', place);
+  }
+
+  drawMinimap() {
+    const g = this.minimap;
+    const px = (x) => (x / WORLD_W) * MM_W;
+    const py = (y) => (y / WORLD_H) * this.mmH;
+    g.clear();
+    g.fillStyle(0x0a0d14, 0.72).fillRect(0, 0, MM_W, this.mmH);
+    g.lineStyle(1, 0x2b3a52, 1).strokeRect(0, 0, MM_W, this.mmH);
+    const view = this.cameras.main.worldView;
+    g.lineStyle(1, 0x3a4a62, 0.9).strokeRect(px(view.x), py(view.y), px(view.width), py(view.height));
+    const blip = (ship, color) => {
+      if (!ship.active) return;
+      const x = px(ship.x), y = py(ship.y);
+      g.fillStyle(color, 1).fillCircle(x, y, 3);
+      g.lineStyle(1, color, 0.9).lineBetween(x, y, x + Math.cos(ship.facing) * 8, y + Math.sin(ship.facing) * 8);
+    };
+    blip(this.player, 0x6fb7ff);
+    blip(this.enemy, 0xff6a5e);
   }
 
   // Each ship gets a private canvas copy of its sprite so combat can erode it
@@ -181,13 +214,13 @@ export class SandboxScene extends Phaser.Scene {
     ship.syncAngle();
   }
 
-  fireShot(group, key, x, y, angle, speed, sound, damage) {
+  fireShot(group, key, x, y, angle, weapon, sound) {
     const def = IMAGES[key];
     const shot = group.create(x, y, key);
     shot.setScale(def.scale).setRotation(angle + def.angleOffset * DEG);
-    shot.damage = damage;
-    this.physics.velocityFromRotation(angle, speed, shot.body.velocity);
-    this.time.delayedCall(1600, () => shot.destroy());
+    shot.damage = weapon.damage;
+    this.physics.velocityFromRotation(angle, weapon.speed, shot.body.velocity);
+    this.time.delayedCall((weapon.range / weapon.speed) * 1000 + 250, () => shot.destroy());
     this.sound.play(sound, { volume: SOUNDS[sound].volume });
   }
 
@@ -201,9 +234,9 @@ export class SandboxScene extends Phaser.Scene {
       const pos = this.hardpointPos(ship, point);
       const dist = Phaser.Math.Distance.Between(pos.x, pos.y, target.x, target.y);
       if (dist > weapon.range) return;
-      ship.nextFire[i] = time + weapon.delay + Math.random() * 300;
+      ship.nextFire[i] = time + weapon.delay + Math.random() * 500;
       const aim = Phaser.Math.Angle.Between(pos.x, pos.y, target.x, target.y) + (Math.random() - 0.5) * 4 * DEG;
-      this.fireShot(group, laserKey, pos.x, pos.y, aim, weapon.speed, sound, weapon.damage);
+      this.fireShot(group, laserKey, pos.x, pos.y, aim, weapon, sound);
     });
   }
 
@@ -220,8 +253,8 @@ export class SandboxScene extends Phaser.Scene {
       const pos = this.hardpointPos(ship, point);
       if (Phaser.Math.Distance.Between(pos.x, pos.y, target.x, target.y) > weapon.range) return;
       ship.nextFire[i] = time + weapon.delay;
-      this.fireShot(group, 'battery', pos.x, pos.y, ship.facing, weapon.speed,
-        ship === this.player ? 'laserPlayer' : 'laserEnemy', weapon.damage);
+      this.fireShot(group, 'battery', pos.x, pos.y, ship.facing, weapon,
+        ship === this.player ? 'laserPlayer' : 'laserEnemy');
       fired = true;
     });
     return fired;
@@ -342,8 +375,8 @@ export class SandboxScene extends Phaser.Scene {
     } else {
       if (this.keys.A.isDown || this.keys.LEFT.isDown) this.player.facing -= turn;
       if (this.keys.D.isDown || this.keys.RIGHT.isDown) this.player.facing += turn;
-      if (this.keys.W.isDown || this.keys.UP.isDown) this.player.throttle = Math.min(1, this.player.throttle + dt * 0.6);
-      if (this.keys.S.isDown || this.keys.DOWN.isDown) this.player.throttle = Math.max(0, this.player.throttle - dt * 0.8);
+      if (this.keys.W.isDown || this.keys.UP.isDown) this.player.throttle = Math.min(1, this.player.throttle + dt * 0.35);
+      if (this.keys.S.isDown || this.keys.DOWN.isDown) this.player.throttle = Math.max(0, this.player.throttle - dt * 0.5);
     }
     this.steerCapital(this.player, dt);
 
@@ -365,13 +398,22 @@ export class SandboxScene extends Phaser.Scene {
       this.tryBattery(e, this.player, this.enemyShots, time);
     }
 
-    const batteryReady = this.batteryReady(this.player, time);
+    this.drawMinimap();
+
+    // Battery readout counts down to the next ready spinal mount.
+    const spinalWaits = this.player.spec.hardpoints
+      .map((point, i) => ({ point, i }))
+      .filter(({ point, i }) => WEAPONS[point.fitted].type === 'spinal' && !this.player.mountDisabled[i])
+      .map(({ i }) => this.player.nextFire[i] - time);
+    const batteryReady = spinalWaits.length > 0 && Math.min(...spinalWaits) <= 0;
+    const batteryText = spinalWaits.length === 0 ? 'OFFLINE'
+      : batteryReady ? 'READY' : `${(Math.min(...spinalWaits) / 1000).toFixed(1)}s`;
     const mountsUp = this.player.mountDisabled.filter((d) => !d).length;
     this.hud.setText(
       `${spec.name.toUpperCase()}  HULL ${Math.max(0, Math.round(this.player.hull))}/${spec.hull}   ` +
       `MOUNTS ${mountsUp}/${spec.hardpoints.length}   ` +
       `THROTTLE ${Math.round(this.player.throttle * 100)}%   ` +
-      `BATTERY ${batteryReady ? 'READY' : '· · ·'}   ` +
+      `BATTERY ${batteryText}   ` +
       `HOSTILE ${this.enemy.active ? Math.max(0, Math.round(this.enemy.hull)) : 0}/${SHIPS[this.enemyKey].hull}`,
     );
   }

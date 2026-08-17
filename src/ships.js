@@ -11,12 +11,14 @@
 // able to swap. Coordinates are fractions of the sprite: y is along the hull
 // toward the bow (+0.5 = bow tip), x is lateral (+ = starboard).
 
+// Tuned for deliberate capital pacing: long ranges, slow cycles, volleys that
+// matter. A battery shot is a decision, not a stream.
 export const WEAPONS = {
-  laserTurret: { name: 'Laser turret', type: 'turret', damage: 12, range: 700, delay: 1400, speed: 520 },
-  flakTurret:  { name: 'Flak turret', type: 'turret', damage: 5, range: 430, delay: 450, speed: 480 },
-  railgun:     { name: 'Railgun', type: 'spinal', damage: 55, range: 950, delay: 3200, speed: 640 },
-  heavyRailgun:{ name: 'Heavy railgun', type: 'spinal', damage: 85, range: 1000, delay: 3600, speed: 660 },
-  beamLance:   { name: 'Beam lance', type: 'spinal', damage: 140, range: 1200, delay: 4500, speed: 720 },
+  laserTurret: { name: 'Laser turret', type: 'turret', damage: 12, range: 850, delay: 2600, speed: 420 },
+  flakTurret:  { name: 'Flak turret', type: 'turret', damage: 5, range: 500, delay: 900, speed: 380 },
+  railgun:     { name: 'Railgun', type: 'spinal', damage: 70, range: 1200, delay: 5000, speed: 520 },
+  heavyRailgun:{ name: 'Heavy railgun', type: 'spinal', damage: 110, range: 1300, delay: 6000, speed: 540 },
+  beamLance:   { name: 'Beam lance', type: 'spinal', damage: 180, range: 1600, delay: 8000, speed: 600 },
 };
 
 const hp = (type, fitted, x, y) => ({ type, fitted, x, y });
@@ -25,7 +27,7 @@ export const SHIPS = {
   fenris: {
     name: 'GTC Fenris', cls: 'Light cruiser', faction: 'GTVA',
     url: 'endless-sky/ship/splinter.png', scale: 0.9,
-    hull: 420, speed: 100, turn: 34, accel: 40,
+    hull: 420, speed: 62, turn: 24, accel: 24,
     hardpoints: [
       hp('spinal', 'railgun', 0, 0.45),
       hp('turret', 'laserTurret', 0.16, 0.12),
@@ -37,7 +39,7 @@ export const SHIPS = {
   leviathan: {
     name: 'GTC Leviathan', cls: 'Cruiser', faction: 'GTVA',
     url: 'endless-sky/ship/splinter.png', scale: 1.0,
-    hull: 650, speed: 80, turn: 26, accel: 30,
+    hull: 650, speed: 50, turn: 18, accel: 18,
     hardpoints: [
       hp('spinal', 'railgun', 0, 0.45),
       hp('turret', 'laserTurret', 0.16, 0.12),
@@ -50,7 +52,7 @@ export const SHIPS = {
   aeolus: {
     name: 'GTC Aeolus', cls: 'Flak cruiser', faction: 'GTVA',
     url: 'endless-sky/ship/mule.png', scale: 1.0,
-    hull: 560, speed: 85, turn: 30, accel: 34,
+    hull: 560, speed: 53, turn: 21, accel: 20,
     hardpoints: [
       hp('spinal', 'railgun', 0, 0.45),
       hp('turret', 'flakTurret', 0.2, 0.2),
@@ -64,7 +66,7 @@ export const SHIPS = {
   deimos: {
     name: 'GTCv Deimos', cls: 'Corvette', faction: 'GTVA',
     url: 'endless-sky/ship/vanguard.png', scale: 1.2,
-    hull: 800, speed: 75, turn: 24, accel: 28,
+    hull: 800, speed: 47, turn: 17, accel: 17,
     hardpoints: [
       hp('spinal', 'heavyRailgun', 0, 0.48),
       hp('turret', 'laserTurret', 0.14, 0.2),
@@ -77,7 +79,7 @@ export const SHIPS = {
   orion: {
     name: 'GTD Orion', cls: 'Destroyer', faction: 'GTVA',
     url: 'endless-sky/ship/behemoth.png', scale: 2.0,
-    hull: 1600, speed: 55, turn: 14, accel: 18,
+    hull: 1600, speed: 34, turn: 10, accel: 11,
     hardpoints: [
       hp('spinal', 'beamLance', 0, 0.46),
       hp('turret', 'laserTurret', 0.2, 0.25),
@@ -90,7 +92,7 @@ export const SHIPS = {
   hecate: {
     name: 'GTD Hecate', cls: 'Destroyer / carrier', faction: 'GTVA',
     url: 'endless-sky/ship/carrier.png', scale: 2.0,
-    hull: 1400, speed: 60, turn: 16, accel: 20,
+    hull: 1400, speed: 37, turn: 11, accel: 12,
     hardpoints: [
       hp('spinal', 'heavyRailgun', 0, 0.46),
       hp('turret', 'laserTurret', 0.18, 0.3),
@@ -104,7 +106,7 @@ export const SHIPS = {
   colossus: {
     name: 'GTVA Colossus', cls: 'Juggernaut', faction: 'GTVA',
     url: 'endless-sky/ship/dreadnought.png', scale: 3.0,
-    hull: 3000, speed: 45, turn: 8, accel: 12,
+    hull: 3000, speed: 28, turn: 6, accel: 7,
     hardpoints: [
       hp('spinal', 'beamLance', 0.08, 0.46),
       hp('spinal', 'beamLance', -0.08, 0.46),
@@ -121,7 +123,7 @@ export const SHIPS = {
   aten: {
     name: 'GVC Aten', cls: 'Cruiser', faction: 'Vasudan (allied)',
     url: 'derived/vasudan/hai anomalocaris.png', scale: 0.95,
-    hull: 380, speed: 90, turn: 30, accel: 36,
+    hull: 380, speed: 56, turn: 21, accel: 22,
     hardpoints: [
       hp('spinal', 'railgun', 0, 0.42),
       hp('turret', 'laserTurret', 0.16, 0.05),
@@ -132,7 +134,7 @@ export const SHIPS = {
   mentu: {
     name: 'GVC Mentu', cls: 'Cruiser', faction: 'Vasudan (allied)',
     url: 'derived/vasudan/hai cicada.png', scale: 1.0,
-    hull: 500, speed: 88, turn: 29, accel: 33,
+    hull: 500, speed: 55, turn: 20, accel: 20,
     hardpoints: [
       hp('spinal', 'railgun', 0, 0.44),
       hp('turret', 'laserTurret', 0.18, 0.15),
@@ -144,7 +146,7 @@ export const SHIPS = {
   sobek: {
     name: 'GVCv Sobek', cls: 'Corvette', faction: 'Vasudan (allied)',
     url: 'derived/vasudan/derecho.png', scale: 1.2,
-    hull: 820, speed: 72, turn: 23, accel: 27,
+    hull: 820, speed: 45, turn: 16, accel: 16,
     hardpoints: [
       hp('spinal', 'heavyRailgun', 0, 0.44),
       hp('turret', 'laserTurret', 0.16, 0.12),
@@ -156,7 +158,7 @@ export const SHIPS = {
   typhon: {
     name: 'GVD Typhon', cls: 'Destroyer', faction: 'Vasudan (allied)',
     url: 'derived/vasudan/aaulqra.png', scale: 2.0,
-    hull: 1500, speed: 50, turn: 12, accel: 16,
+    hull: 1500, speed: 31, turn: 8, accel: 10,
     hardpoints: [
       hp('spinal', 'beamLance', 0, 0.42),
       hp('turret', 'laserTurret', 0.18, 0.2), hp('turret', 'laserTurret', -0.18, 0.2),
@@ -167,7 +169,7 @@ export const SHIPS = {
   hatshepsut: {
     name: 'GVD Hatshepsut', cls: 'Destroyer', faction: 'Vasudan (allied)',
     url: 'derived/vasudan/winter gale.png', scale: 2.0,
-    hull: 1550, speed: 58, turn: 15, accel: 19,
+    hull: 1550, speed: 36, turn: 11, accel: 11,
     hardpoints: [
       hp('spinal', 'beamLance', 0, 0.45),
       hp('turret', 'laserTurret', 0.16, 0.25), hp('turret', 'laserTurret', -0.16, 0.25),
@@ -184,7 +186,7 @@ export const SHIPS = {
   cain: {
     name: 'SC Cain', cls: 'Cruiser', faction: 'Shivan',
     url: 'derived/shivan/ibis.png', scale: 1.0,
-    hull: 400, speed: 95, turn: 32, accel: 38,
+    hull: 400, speed: 59, turn: 22, accel: 23,
     hardpoints: [
       hp('spinal', 'railgun', 0, 0.45),
       hp('turret', 'laserTurret', 0.14, 0.1),
@@ -196,7 +198,7 @@ export const SHIPS = {
   lilith: {
     name: 'SC Lilith', cls: 'Heavy cruiser', faction: 'Shivan',
     url: 'derived/shivan/ibis.png', scale: 1.15,
-    hull: 550, speed: 75, turn: 24, accel: 28,
+    hull: 550, speed: 47, turn: 17, accel: 17,
     hardpoints: [
       hp('spinal', 'beamLance', 0, 0.45),
       hp('turret', 'laserTurret', 0.14, 0.1),
@@ -208,7 +210,7 @@ export const SHIPS = {
   rakshasa: {
     name: 'SC Rakshasa', cls: 'Cruiser', faction: 'Shivan',
     url: "derived/shivan/telis'het.png", scale: 1.0,
-    hull: 480, speed: 85, turn: 28, accel: 32,
+    hull: 480, speed: 53, turn: 20, accel: 19,
     hardpoints: [
       hp('spinal', 'heavyRailgun', 0, 0.42),
       hp('turret', 'laserTurret', 0.16, 0.15),
@@ -221,7 +223,7 @@ export const SHIPS = {
   moloch: {
     name: 'SCv Moloch', cls: 'Corvette', faction: 'Shivan',
     url: "derived/shivan/vareti'het.png", scale: 1.2,
-    hull: 750, speed: 70, turn: 22, accel: 26,
+    hull: 750, speed: 43, turn: 15, accel: 16,
     hardpoints: [
       hp('spinal', 'heavyRailgun', 0, 0.42),
       hp('turret', 'laserTurret', 0.18, 0.1),
@@ -234,7 +236,7 @@ export const SHIPS = {
   demon: {
     name: 'SD Demon', cls: 'Destroyer', faction: 'Shivan',
     url: 'derived/shivan/quarg hydra.png', scale: 1.8,
-    hull: 1500, speed: 55, turn: 14, accel: 18,
+    hull: 1500, speed: 34, turn: 10, accel: 11,
     hardpoints: [
       hp('spinal', 'beamLance', 0, 0.44),
       hp('turret', 'laserTurret', 0.2, 0.22), hp('turret', 'laserTurret', -0.2, 0.22),
@@ -246,7 +248,7 @@ export const SHIPS = {
   ravana: {
     name: 'SD Ravana', cls: 'Destroyer', faction: 'Shivan',
     url: 'derived/shivan/quarg guivre.png', scale: 1.8,
-    hull: 1400, speed: 55, turn: 15, accel: 18,
+    hull: 1400, speed: 34, turn: 11, accel: 11,
     hardpoints: [
       hp('spinal', 'beamLance', 0.1, 0.44),
       hp('spinal', 'beamLance', -0.1, 0.44),
@@ -259,7 +261,7 @@ export const SHIPS = {
   lucifer: {
     name: 'SD Lucifer', cls: 'Superdestroyer', faction: 'Shivan',
     url: 'derived/shivan/albatross.png', scale: 2.6,
-    hull: 2600, speed: 50, turn: 10, accel: 14,
+    hull: 2600, speed: 31, turn: 7, accel: 8,
     hardpoints: [
       hp('spinal', 'beamLance', 0.08, 0.45),
       hp('spinal', 'beamLance', -0.08, 0.45),
@@ -272,7 +274,7 @@ export const SHIPS = {
   sathanas: {
     name: 'SJ Sathanas', cls: 'Juggernaut', faction: 'Shivan',
     url: 'derived/shivan/kar ik vot 349.png', scale: 3.0,
-    hull: 3200, speed: 45, turn: 8, accel: 12,
+    hull: 3200, speed: 28, turn: 6, accel: 7,
     hardpoints: [
       hp('spinal', 'beamLance', 0.12, 0.42), hp('spinal', 'beamLance', -0.12, 0.42),
       hp('spinal', 'beamLance', 0.2, 0.3), hp('spinal', 'beamLance', -0.2, 0.3),
