@@ -34,4 +34,5 @@ export const SOUNDS = {
   playerHit:   { url: 'space-shooter-redux/Bonus/sfx_shieldDown.ogg', volume: 0.5 },
   explosion:   { url: 'space-shooter-redux/Bonus/sfx_lose.ogg', volume: 0.5 },
   win:         { url: 'space-shooter-redux/Bonus/sfx_twoTone.ogg', volume: 0.6 },
+  beam:        { url: 'space-shooter-redux/Bonus/sfx_zap.ogg', volume: 0.35 },
 };

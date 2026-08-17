@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { IMAGES, SOUNDS } from '../manifest.js';
 import { SHIPS, WEAPONS } from '../ships.js';
+import { ensureNebula, factionColor } from '../fx.js';
 
 const WORLD_W = 6000;
 const WORLD_H = 4000;
@@ -18,8 +19,12 @@ export class SandboxScene extends Phaser.Scene {
     this.playerKey = data?.player ?? this.playerKey ?? 'fenris';
     this.enemyKey = data?.enemy ?? this.enemyKey ?? 'cain';
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
+    ensureNebula(this);
     this.bg = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'background')
       .setOrigin(0).setScrollFactor(0);
+    this.bgNebula = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'nebula')
+      .setOrigin(0).setScrollFactor(0).setAlpha(0.9);
+    this.fires = [];
 
     this.playerShots = this.physics.add.group();
     this.enemyShots = this.physics.add.group();
@@ -35,14 +40,17 @@ export class SandboxScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H)
       .startFollow(this.player, false, 0.06, 0.06)
       .setZoom(this.zoomFactor);
-    // The scrollFactor-0 backdrop shrinks with zoom; oversize it to compensate.
+    // The scrollFactor-0 backdrops shrink with zoom; oversize to compensate.
     const fitBg = () => {
       const origin = this.toUI(0, 0);
-      this.bg.setPosition(origin.x, origin.y)
-        .setSize(this.scale.width / this.zoomFactor, this.scale.height / this.zoomFactor);
+      for (const layer of [this.bg, this.bgNebula]) {
+        layer.setPosition(origin.x, origin.y)
+          .setSize(this.scale.width / this.zoomFactor, this.scale.height / this.zoomFactor);
+      }
     };
     fitBg();
     this.scale.on('resize', fitBg);
+    this.hullBars = this.add.graphics().setDepth(8);
 
     this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE,R,ESC');
     this.input.keyboard.on('keydown-ESC', () => this.scene.start('title'));
@@ -65,6 +73,21 @@ export class SandboxScene extends Phaser.Scene {
   toUI(sx, sy) {
     const w = this.scale.width / 2, h = this.scale.height / 2;
     return { x: (sx - w) / this.zoomFactor + w, y: (sy - h) / this.zoomFactor + h };
+  }
+
+  drawHullBars() {
+    const g = this.hullBars;
+    g.clear();
+    for (const ship of [this.player, this.enemy]) {
+      if (!ship?.active || ship.dying) continue;
+      const frac = Phaser.Math.Clamp(ship.hull / ship.spec.hull, 0, 1);
+      if (frac >= 1) continue;
+      const w = Phaser.Math.Clamp(ship.displayWidth, 70, 320);
+      const x = ship.x - w / 2, y = ship.y - ship.displayHeight * 0.62;
+      const color = frac > 0.6 ? 0x7dd68f : frac > 0.3 ? 0xffb454 : 0xff5040;
+      g.fillStyle(0x0a0d14, 0.7).fillRect(x - 1, y - 1, w + 2, 5);
+      g.fillStyle(color, 0.9).fillRect(x, y, w * frac, 3);
+    }
   }
 
   createMinimap() {
@@ -148,7 +171,31 @@ export class SandboxScene extends Phaser.Scene {
     ship.mountDisabled = spec.hardpoints.map(() => false);
     ship.mountBaseline = spec.hardpoints.map((point) =>
       this.countOpaque(ship.damageCanvas, this.mountRegion(ship, point)));
+    ship.accent = factionColor(spec);
+    ship.engine = this.add.particles(0, 0, 'spark', {
+      tint: ship.accent, lifespan: 380, speed: { min: 4, max: 18 },
+      scale: { start: 0.55, end: 0 }, alpha: { start: 0.75, end: 0 },
+      frequency: -1, blendMode: 'ADD',
+    }).setDepth(2);
+    ship.engineOn = false;
     return ship;
+  }
+
+  updateEngine(ship) {
+    if (!ship.active) return;
+    const stern = -ship.displayHeight * 0.48;
+    ship.engine.setPosition(
+      ship.x + Math.cos(ship.facing) * stern,
+      ship.y + Math.sin(ship.facing) * stern,
+    );
+    const thr = ship.dying ? 0 : ship.throttle;
+    if (thr > 0.05) {
+      if (!ship.engineOn) { ship.engine.start(); ship.engineOn = true; }
+      ship.engine.frequency = 130 - 110 * thr;
+    } else if (ship.engineOn) {
+      ship.engine.stop();
+      ship.engineOn = false;
+    }
   }
 
   // Erode pixels around the impact; area scales with damage relative to hull.
@@ -185,6 +232,13 @@ export class SandboxScene extends Phaser.Scene {
         const pos = this.hardpointPos(ship, point);
         this.burst(pos.x, pos.y, 14);
         this.sound.play('explosion', { volume: 0.25 });
+        // Dead mounts burn for the rest of the fight.
+        const fire = this.add.particles(pos.x, pos.y, 'spark', {
+          tint: 0xff8844, lifespan: 480, speed: { min: 5, max: 25 },
+          scale: { start: 0.45, end: 0 }, alpha: { start: 0.8, end: 0 },
+          frequency: 110, blendMode: 'ADD',
+        }).setDepth(4);
+        this.fires.push({ ship, point, emitter: fire });
       }
     });
   }
@@ -214,6 +268,11 @@ export class SandboxScene extends Phaser.Scene {
     ship.syncAngle();
   }
 
+  muzzleFlash(x, y, color) {
+    const flash = this.add.circle(x, y, 7, color, 0.9).setBlendMode(Phaser.BlendModes.ADD).setDepth(5);
+    this.tweens.add({ targets: flash, scale: 2.2, alpha: 0, duration: 160, onComplete: () => flash.destroy() });
+  }
+
   fireShot(group, key, x, y, angle, weapon, sound) {
     const def = IMAGES[key];
     const shot = group.create(x, y, key);
@@ -224,10 +283,34 @@ export class SandboxScene extends Phaser.Scene {
     this.sound.play(sound, { volume: SOUNDS[sound].volume });
   }
 
+  // Beam weapons hit instantly along the bore and render as a fading lance.
+  fireBeam(ship, target, weapon, pos) {
+    const dir = ship.facing;
+    let end = { x: pos.x + Math.cos(dir) * weapon.range, y: pos.y + Math.sin(dir) * weapon.range };
+    if (target.active && !target.dying) {
+      const tx = target.x - pos.x, ty = target.y - pos.y;
+      const along = tx * Math.cos(dir) + ty * Math.sin(dir);
+      const perp = Math.abs(-Math.sin(dir) * tx + Math.cos(dir) * ty);
+      if (along > 0 && along < weapon.range && perp < Math.max(target.displayWidth, target.displayHeight) * 0.35) {
+        end = { x: pos.x + Math.cos(dir) * along, y: pos.y + Math.sin(dir) * along };
+        this.damageShip(target, weapon.damage, end.x, end.y);
+        this.burst(end.x, end.y, 10);
+        this.cameras.main.shake(140, 0.004);
+      }
+    }
+    const g = this.add.graphics().setDepth(4).setBlendMode(Phaser.BlendModes.ADD);
+    g.lineStyle(14, ship.accent, 0.22).lineBetween(pos.x, pos.y, end.x, end.y);
+    g.lineStyle(6, ship.accent, 0.5).lineBetween(pos.x, pos.y, end.x, end.y);
+    g.lineStyle(2, 0xffffff, 1).lineBetween(pos.x, pos.y, end.x, end.y);
+    this.tweens.add({ targets: g, alpha: 0, duration: 550, onComplete: () => g.destroy() });
+    this.muzzleFlash(pos.x, pos.y, ship.accent);
+    this.sound.play('beam', { volume: SOUNDS.beam.volume });
+  }
+
   // Turret hardpoints engage on their own when the target is inside their
   // fitted weapon's range; each fires from its real mount position.
   runTurrets(ship, target, group, laserKey, sound, time) {
-    if (!target.active) return;
+    if (!target.active || target.dying || ship.dying) return;
     ship.spec.hardpoints.forEach((point, i) => {
       const weapon = WEAPONS[point.fitted];
       if (weapon.type !== 'turret' || ship.mountDisabled[i] || time < ship.nextFire[i]) return;
@@ -243,7 +326,7 @@ export class SandboxScene extends Phaser.Scene {
   // Spinal mounts fire together on the battery trigger, but only when the bow
   // is actually laid on the target.
   tryBattery(ship, target, group, time) {
-    if (!target.active) return false;
+    if (!target.active || target.dying || ship.dying) return false;
     const aim = Phaser.Math.Angle.Between(ship.x, ship.y, target.x, target.y);
     if (Math.abs(Phaser.Math.Angle.Wrap(aim - ship.facing)) > BATTERY_ARC) return false;
     let fired = false;
@@ -253,8 +336,13 @@ export class SandboxScene extends Phaser.Scene {
       const pos = this.hardpointPos(ship, point);
       if (Phaser.Math.Distance.Between(pos.x, pos.y, target.x, target.y) > weapon.range) return;
       ship.nextFire[i] = time + weapon.delay;
-      this.fireShot(group, 'battery', pos.x, pos.y, ship.facing, weapon,
-        ship === this.player ? 'laserPlayer' : 'laserEnemy');
+      if (weapon.beam) {
+        this.fireBeam(ship, target, weapon, pos);
+      } else {
+        this.fireShot(group, 'battery', pos.x, pos.y, ship.facing, weapon,
+          ship === this.player ? 'laserPlayer' : 'laserEnemy');
+        this.muzzleFlash(pos.x, pos.y, ship.accent);
+      }
       fired = true;
     });
     return fired;
@@ -269,16 +357,62 @@ export class SandboxScene extends Phaser.Scene {
     const damage = shot.damage ?? 10;
     const { x, y } = shot;
     shot.destroy();
+    this.damageShip(ship, damage, x, y);
+  }
+
+  damageShip(ship, damage, x, y) {
+    if (ship.dying) return;
     ship.hull -= damage;
     this.applyPixelDamage(ship, x, y, damage);
     this.burst(x, y, 5);
-    if (ship === this.player) this.sound.play('playerHit', { volume: 0.3 });
-    if (ship.hull <= 0 && !this.over) {
-      this.burst(ship.x, ship.y, 40);
+    if (ship === this.player) {
+      this.sound.play('playerHit', { volume: 0.3 });
+      if (damage >= 50) this.cameras.main.shake(150, 0.005);
+    }
+    if (ship.hull <= 0 && !this.over) this.startDeath(ship);
+  }
+
+  // GSB-style staged death: secondary explosions walk the hull, then the
+  // magazine goes with a flash and debris.
+  startDeath(ship) {
+    ship.dying = true;
+    ship.mountDisabled = ship.mountDisabled.map(() => true);
+    ship.setAcceleration(0);
+    ship.throttle = 0;
+    for (let i = 0; i < 5; i++) {
+      this.time.delayedCall(i * 190, () => {
+        if (!ship.active) return;
+        this.burst(
+          ship.x + (Math.random() - 0.5) * ship.displayWidth * 0.7,
+          ship.y + (Math.random() - 0.5) * ship.displayHeight * 0.7, 12);
+        this.sound.play('explosion', { volume: 0.18 });
+      });
+    }
+    this.time.delayedCall(1000, () => {
+      if (!ship.active) return;
+      const { x, y } = ship;
+      const size = Math.max(ship.displayWidth, ship.displayHeight);
+      this.burst(x, y, 46);
+      const flash = this.add.circle(x, y, size * 0.5, 0xfff2cc, 0.85)
+        .setBlendMode(Phaser.BlendModes.ADD).setDepth(6);
+      this.tweens.add({ targets: flash, scale: 2.3, alpha: 0, duration: 480, onComplete: () => flash.destroy() });
+      for (let i = 0; i < 9; i++) {
+        const chunk = this.add.image(x, y, 'spark')
+          .setTint(0x777788).setScale(0.5 + Math.random() * 0.7).setDepth(3);
+        const ang = Math.random() * Math.PI * 2;
+        const dist = size * (0.4 + Math.random() * 0.8);
+        this.tweens.add({
+          targets: chunk, x: x + Math.cos(ang) * dist, y: y + Math.sin(ang) * dist,
+          angle: Phaser.Math.Between(-180, 180), alpha: 0,
+          duration: 1600 + Math.random() * 900, onComplete: () => chunk.destroy(),
+        });
+      }
+      this.cameras.main.shake(320, 0.01);
       this.sound.play('explosion', { volume: SOUNDS.explosion.volume });
+      ship.engine.destroy();
       ship.destroy();
       this.endMission(ship === this.enemy);
-    }
+    });
   }
 
   burst(x, y, quantity) {
@@ -361,10 +495,22 @@ export class SandboxScene extends Phaser.Scene {
   update(time, delta) {
     const dt = delta / 1000;
     const cam = this.cameras.main;
-    this.bg.setTilePosition(cam.scrollX * 0.4, cam.scrollY * 0.4);
+    this.bg.setTilePosition(cam.scrollX * 0.15, cam.scrollY * 0.15);
+    this.bgNebula.setTilePosition(cam.scrollX * 0.28, cam.scrollY * 0.28);
+
+    this.drawMinimap();
+    this.updateEngine(this.player);
+    this.updateEngine(this.enemy);
+    this.fires = this.fires.filter((f) => {
+      if (!f.ship.active) { f.emitter.destroy(); return false; }
+      const pos = this.hardpointPos(f.ship, f.point);
+      f.emitter.setPosition(pos.x, pos.y);
+      return true;
+    });
+    this.drawHullBars();
 
     if (this.keys.R.isDown && this.over) { this.scene.restart(); return; }
-    if (!this.player.active) return;
+    if (!this.player.active || this.player.dying) return;
     const spec = this.player.spec;
 
     // Helm: A/D turn, W/S trim throttle; touch stick sets heading + throttle.
@@ -386,7 +532,7 @@ export class SandboxScene extends Phaser.Scene {
     }
 
     // Enemy captain: close to gun range, then hold a slow broadside orbit.
-    if (this.enemy.active && !this.over) {
+    if (this.enemy.active && !this.enemy.dying && !this.over) {
       const e = this.enemy;
       const dist = Phaser.Math.Distance.Between(e.x, e.y, this.player.x, this.player.y);
       const bearing = Phaser.Math.Angle.Between(e.x, e.y, this.player.x, this.player.y);
@@ -397,8 +543,6 @@ export class SandboxScene extends Phaser.Scene {
       this.runTurrets(e, this.player, this.enemyShots, 'laserEnemy', 'laserEnemy', time);
       this.tryBattery(e, this.player, this.enemyShots, time);
     }
-
-    this.drawMinimap();
 
     // Battery readout counts down to the next ready spinal mount.
     const spinalWaits = this.player.spec.hardpoints

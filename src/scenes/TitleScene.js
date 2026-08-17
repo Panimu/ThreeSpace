@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { IMAGES, SOUNDS, resolveUrl } from '../manifest.js';
+import { ensureNebula } from '../fx.js';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -16,8 +17,10 @@ export class TitleScene extends Phaser.Scene {
     const w = () => this.scale.width;
     const h = () => this.scale.height;
 
+    ensureNebula(this);
     this.bg = this.add.tileSprite(0, 0, w(), h(), 'background').setOrigin(0).setScrollFactor(0);
-    this.scale.on('resize', (s) => this.bg.setSize(s.width, s.height));
+    this.nebula = this.add.tileSprite(0, 0, w(), h(), 'nebula').setOrigin(0).setScrollFactor(0).setAlpha(0.85);
+    this.scale.on('resize', (s) => { this.bg.setSize(s.width, s.height); this.nebula.setSize(s.width, s.height); });
 
     // A battleship drifts through the backdrop for scale.
     this.drifter = this.add.image(w() * 0.75, h() * 0.35, 'ship_colossus')
@@ -56,6 +59,7 @@ export class TitleScene extends Phaser.Scene {
   }
 
   update(_, delta) {
+    this.nebula.tilePositionX += (delta / 1000) * 3;
     this.drifter.x -= (delta / 1000) * 6;
     this.drifter.y += (delta / 1000) * 1.5;
     if (this.drifter.x < -300) this.drifter.setPosition(this.scale.width + 300, this.scale.height * 0.25);
