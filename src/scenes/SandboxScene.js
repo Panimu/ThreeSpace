@@ -23,7 +23,7 @@ export class SandboxScene extends Phaser.Scene {
     this.enemyShots = this.physics.add.group();
 
     this.player = this.spawnCapital('fenris', 1200, WORLD_H / 2, 20 * DEG);
-    this.enemy = this.spawnCapital('raider', WORLD_W - 1400, WORLD_H / 2, 200 * DEG);
+    this.enemy = this.spawnCapital('cain', WORLD_W - 1400, WORLD_H / 2, 200 * DEG);
 
     this.physics.add.overlap(this.playerShots, this.enemy, (_e, shot) => this.hit(shot, this.enemy));
     this.physics.add.overlap(this.enemyShots, this.player, (_p, shot) => this.hit(shot, this.player));
@@ -265,7 +265,7 @@ export class SandboxScene extends Phaser.Scene {
       `${spec.name.toUpperCase()}  HULL ${Math.max(0, Math.round(this.player.hull))}/${spec.hull}   ` +
       `THROTTLE ${Math.round(this.player.throttle * 100)}%   ` +
       `BATTERY ${batteryReady ? 'READY' : '· · ·'}   ` +
-      `HOSTILE ${this.enemy.active ? Math.max(0, Math.round(this.enemy.hull)) : 0}/${SHIPS.raider.hull}`,
+      `HOSTILE ${this.enemy.active ? Math.max(0, Math.round(this.enemy.hull)) : 0}/${SHIPS.cain.hull}`,
     );
   }
 }

@@ -114,17 +114,110 @@ export const SHIPS = {
     ],
     desc: 'FUTURE COMMAND — six kilometers, twenty years, and the industrial output of two species. There is one of it.',
   },
-  raider: {
-    name: 'Korath Raider', cls: 'Raider', faction: 'Korath (hostile)',
-    url: 'endless-sky/ship/raider.png', scale: 1.0,
-    hull: 600, speed: 95, turn: 30, accel: 36,
+  // ---- Shivan line (user picks, Shivan casting board 2026-08):
+  // Cain/Lilith→Remnant Ibis, Rakshasa→Ka'het Telis'het, Moloch→Ka'het
+  // Vareti'het, Demon→Quarg Hydra, Ravana→Quarg Guivre, Lucifer→Remnant
+  // Albatross, Sathanas→Korath Kar Ik Vot 349.
+
+  cain: {
+    name: 'SC Cain', cls: 'Cruiser', faction: 'Shivan',
+    url: 'endless-sky/ship/ibis.png', scale: 1.0,
+    hull: 400, speed: 95, turn: 32, accel: 38,
     hardpoints: [
-      hp('spinal', 'heavyRailgun', 0, 0.45),
-      hp('turret', 'laserTurret', 0.15, 0.15),
-      hp('turret', 'laserTurret', -0.15, -0.1),
-      hp('turret', 'laserTurret', 0.15, -0.3),
+      hp('spinal', 'railgun', 0, 0.45),
+      hp('turret', 'laserTurret', 0.14, 0.1),
+      hp('turret', 'laserTurret', -0.14, -0.2),
     ],
-    desc: 'A tower of scavenged armor that appears at the edge of contested space, takes what it wants, and burns the rest.',
+    desc: 'The first capital most pilots ever see burn — and the first that burns them. A skeletal spine with a claw for a bow.',
+    hostile: true,
+  },
+  lilith: {
+    name: 'SC Lilith', cls: 'Heavy cruiser', faction: 'Shivan',
+    url: 'endless-sky/ship/ibis.png', scale: 1.15,
+    hull: 550, speed: 75, turn: 24, accel: 28,
+    hardpoints: [
+      hp('spinal', 'beamLance', 0, 0.45),
+      hp('turret', 'laserTurret', 0.14, 0.1),
+      hp('turret', 'laserTurret', -0.14, -0.2),
+    ],
+    desc: 'A Cain that traded everything for one oversized beam. Doctrine is simple: do not be in front of it.',
+    hostile: true,
+  },
+  rakshasa: {
+    name: 'SC Rakshasa', cls: 'Cruiser', faction: 'Shivan',
+    url: "endless-sky/ship/telis'het.png", scale: 1.0,
+    hull: 480, speed: 85, turn: 28, accel: 32,
+    hardpoints: [
+      hp('spinal', 'heavyRailgun', 0, 0.42),
+      hp('turret', 'laserTurret', 0.16, 0.15),
+      hp('turret', 'laserTurret', -0.16, 0.15),
+      hp('turret', 'laserTurret', 0, -0.3),
+    ],
+    desc: 'Second-generation Shivan cruiser: heavier guns, thicker hide, and a silhouette like something that stings.',
+    hostile: true,
+  },
+  moloch: {
+    name: 'SCv Moloch', cls: 'Corvette', faction: 'Shivan',
+    url: "endless-sky/ship/vareti'het.png", scale: 1.2,
+    hull: 750, speed: 70, turn: 22, accel: 26,
+    hardpoints: [
+      hp('spinal', 'heavyRailgun', 0, 0.42),
+      hp('turret', 'laserTurret', 0.18, 0.1),
+      hp('turret', 'laserTurret', -0.18, 0.1),
+      hp('turret', 'laserTurret', 0, -0.32),
+    ],
+    desc: 'Hunched and asymmetric, more grown than built. The escort that makes Shivan convoys not worth the trade.',
+    hostile: true,
+  },
+  demon: {
+    name: 'SD Demon', cls: 'Destroyer', faction: 'Shivan',
+    url: 'endless-sky/ship/quarg hydra.png', scale: 1.8,
+    hull: 1500, speed: 55, turn: 14, accel: 18,
+    hardpoints: [
+      hp('spinal', 'beamLance', 0, 0.44),
+      hp('turret', 'laserTurret', 0.2, 0.22), hp('turret', 'laserTurret', -0.2, 0.22),
+      hp('turret', 'laserTurret', 0.2, -0.22), hp('turret', 'laserTurret', -0.2, -0.22),
+    ],
+    desc: 'Jagged black bulk around a fighterbay maw. Where a Demon arrives, the evacuation order has already come too late.',
+    hostile: true,
+  },
+  ravana: {
+    name: 'SD Ravana', cls: 'Destroyer', faction: 'Shivan',
+    url: 'endless-sky/ship/quarg guivre.png', scale: 1.8,
+    hull: 1400, speed: 55, turn: 15, accel: 18,
+    hardpoints: [
+      hp('spinal', 'beamLance', 0.1, 0.44),
+      hp('spinal', 'beamLance', -0.1, 0.44),
+      hp('turret', 'laserTurret', 0.2, 0), hp('turret', 'laserTurret', -0.2, 0),
+      hp('turret', 'laserTurret', 0, -0.35),
+    ],
+    desc: 'Twin forward prongs with the main beams boresighted down them. The Ravana does not maneuver to fight; it points.',
+    hostile: true,
+  },
+  lucifer: {
+    name: 'SD Lucifer', cls: 'Superdestroyer', faction: 'Shivan',
+    url: 'endless-sky/ship/albatross.png', scale: 2.6,
+    hull: 2600, speed: 50, turn: 10, accel: 14,
+    hardpoints: [
+      hp('spinal', 'beamLance', 0.08, 0.45),
+      hp('spinal', 'beamLance', -0.08, 0.45),
+      hp('turret', 'laserTurret', 0.2, 0.25), hp('turret', 'laserTurret', -0.2, 0.25),
+      hp('turret', 'laserTurret', 0.2, -0.25), hp('turret', 'laserTurret', -0.2, -0.25),
+    ],
+    desc: 'The nightmare of the Great War, shielded against everything the Alliance had. Fourteen years later, pilots still check their sensors twice.',
+    hostile: true,
+  },
+  sathanas: {
+    name: 'SJ Sathanas', cls: 'Juggernaut', faction: 'Shivan',
+    url: 'endless-sky/ship/kar ik vot 349.png', scale: 3.0,
+    hull: 3200, speed: 45, turn: 8, accel: 12,
+    hardpoints: [
+      hp('spinal', 'beamLance', 0.12, 0.42), hp('spinal', 'beamLance', -0.12, 0.42),
+      hp('spinal', 'beamLance', 0.2, 0.3), hp('spinal', 'beamLance', -0.2, 0.3),
+      hp('turret', 'laserTurret', 0.22, 0), hp('turret', 'laserTurret', -0.22, 0),
+      hp('turret', 'laserTurret', 0.22, -0.3), hp('turret', 'laserTurret', -0.22, -0.3),
+    ],
+    desc: 'Four clawed arms around the main beam array, and there are more than eighty of them. The Colossus fought one. Once.',
     hostile: true,
   },
 };
