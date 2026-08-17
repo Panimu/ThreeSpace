@@ -31,6 +31,32 @@ export function ensureNebula(scene) {
   tex.refresh();
 }
 
+// Soft gradient strips and orbs the beam renderer stretches between points.
+// All white — tinted per faction at draw time.
+export function ensureBeamTextures(scene) {
+  if (scene.textures.exists('beam-halo')) return;
+  const strip = (key, h, stops) => {
+    const tex = scene.textures.createCanvas(key, 64, h);
+    const ctx = tex.context;
+    const grad = ctx.createLinearGradient(0, 0, 0, h);
+    for (const [offset, alpha] of stops) grad.addColorStop(offset, `rgba(255,255,255,${alpha})`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 64, h);
+    tex.refresh();
+  };
+  strip('beam-halo', 64, [[0, 0], [0.5, 0.6], [1, 0]]);
+  strip('beam-core', 16, [[0, 0], [0.3, 0.85], [0.5, 1], [0.7, 0.85], [1, 0]]);
+  const orb = scene.textures.createCanvas('glow-orb', 64, 64);
+  const ctx = orb.context;
+  const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(255,255,255,1)');
+  grad.addColorStop(0.35, 'rgba(255,255,255,0.55)');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 64, 64);
+  orb.refresh();
+}
+
 // Faction accent used for engines and beams.
 export function factionColor(spec) {
   if (spec.faction === 'Shivan') return 0xff5040;

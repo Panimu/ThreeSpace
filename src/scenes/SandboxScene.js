@@ -1,7 +1,11 @@
 import Phaser from 'phaser';
 import { IMAGES, SOUNDS } from '../manifest.js';
 import { SHIPS, WEAPONS } from '../ships.js';
-import { ensureNebula, factionColor } from '../fx.js';
+import { ensureNebula, ensureBeamTextures, factionColor } from '../fx.js';
+
+const BEAM_RAMP = 110;
+const BEAM_HOLD = 560;
+const BEAM_FADE = 230;
 
 const WORLD_W = 6000;
 const WORLD_H = 4000;
@@ -20,6 +24,8 @@ export class SandboxScene extends Phaser.Scene {
     this.enemyKey = data?.enemy ?? this.enemyKey ?? 'cain';
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     ensureNebula(this);
+    ensureBeamTextures(this);
+    this.beams = [];
     this.bg = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'background')
       .setOrigin(0).setScrollFactor(0);
     this.bgNebula = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'nebula')
@@ -283,28 +289,88 @@ export class SandboxScene extends Phaser.Scene {
     this.sound.play(sound, { volume: SOUNDS[sound].volume });
   }
 
-  // Beam weapons hit instantly along the bore and render as a fading lance.
-  fireBeam(ship, target, weapon, pos) {
-    const dir = ship.facing;
-    let end = { x: pos.x + Math.cos(dir) * weapon.range, y: pos.y + Math.sin(dir) * weapon.range };
-    if (target.active && !target.dying) {
-      const tx = target.x - pos.x, ty = target.y - pos.y;
-      const along = tx * Math.cos(dir) + ty * Math.sin(dir);
-      const perp = Math.abs(-Math.sin(dir) * tx + Math.cos(dir) * ty);
-      if (along > 0 && along < weapon.range && perp < Math.max(target.displayWidth, target.displayHeight) * 0.35) {
-        end = { x: pos.x + Math.cos(dir) * along, y: pos.y + Math.sin(dir) * along };
-        this.damageShip(target, weapon.damage, end.x, end.y);
-        this.burst(end.x, end.y, 10);
-        this.cameras.main.shake(140, 0.004);
-      }
-    }
-    const g = this.add.graphics().setDepth(4).setBlendMode(Phaser.BlendModes.ADD);
-    g.lineStyle(14, ship.accent, 0.22).lineBetween(pos.x, pos.y, end.x, end.y);
-    g.lineStyle(6, ship.accent, 0.5).lineBetween(pos.x, pos.y, end.x, end.y);
-    g.lineStyle(2, 0xffffff, 1).lineBetween(pos.x, pos.y, end.x, end.y);
-    this.tweens.add({ targets: g, alpha: 0, duration: 550, onComplete: () => g.destroy() });
-    this.muzzleFlash(pos.x, pos.y, ship.accent);
+  // Beams are sustained: they sweep with the firing ship for ~0.9s and deal
+  // their damage continuously while the ray is actually on the target.
+  fireBeam(ship, target, weapon, point) {
+    const add = (key, depth) => this.add.image(0, 0, key)
+      .setOrigin(0, 0.5).setBlendMode(Phaser.BlendModes.ADD).setDepth(depth).setVisible(false);
+    const beam = {
+      ship, target, weapon, point, elapsed: 0, pixelPool: 0, connected: false, lastSpark: 0,
+      halo: add('beam-halo', 4).setTint(ship.accent),
+      core: add('beam-core', 5),
+      muzzle: this.add.image(0, 0, 'glow-orb').setBlendMode(Phaser.BlendModes.ADD)
+        .setDepth(5).setTint(ship.accent).setVisible(false),
+      impact: this.add.image(0, 0, 'glow-orb').setBlendMode(Phaser.BlendModes.ADD)
+        .setDepth(5).setVisible(false),
+    };
+    this.beams.push(beam);
     this.sound.play('beam', { volume: SOUNDS.beam.volume });
+  }
+
+  updateBeams(delta, time) {
+    this.beams = this.beams.filter((beam) => {
+      const { ship, target, weapon, point } = beam;
+      beam.elapsed += delta;
+      const total = BEAM_RAMP + BEAM_HOLD + BEAM_FADE;
+      if (beam.elapsed >= total || !ship.active) {
+        for (const part of [beam.halo, beam.core, beam.muzzle, beam.impact]) part.destroy();
+        return false;
+      }
+      const t = beam.elapsed;
+      const power = t < BEAM_RAMP ? t / BEAM_RAMP
+        : t < BEAM_RAMP + BEAM_HOLD ? 0.86 + Math.random() * 0.14
+        : 1 - (t - BEAM_RAMP - BEAM_HOLD) / BEAM_FADE;
+
+      const pos = this.hardpointPos(ship, point);
+      const dir = ship.facing;
+      let length = weapon.range;
+      let hitting = false;
+      if (target.active && !target.dying) {
+        const tx = target.x - pos.x, ty = target.y - pos.y;
+        const along = tx * Math.cos(dir) + ty * Math.sin(dir);
+        const perp = Math.abs(-Math.sin(dir) * tx + Math.cos(dir) * ty);
+        if (along > 0 && along < weapon.range
+          && perp < Math.max(target.displayWidth, target.displayHeight) * 0.35) {
+          length = along;
+          hitting = true;
+        }
+      }
+      const endX = pos.x + Math.cos(dir) * length;
+      const endY = pos.y + Math.sin(dir) * length;
+
+      beam.halo.setVisible(true).setPosition(pos.x, pos.y).setRotation(dir)
+        .setDisplaySize(length, 46 * power).setAlpha(0.85 * power);
+      beam.core.setVisible(true).setPosition(pos.x, pos.y).setRotation(dir)
+        .setDisplaySize(length, 9 * power).setAlpha(power);
+      beam.muzzle.setVisible(true).setPosition(pos.x, pos.y)
+        .setDisplaySize(64 * power, 64 * power).setAlpha(power);
+      beam.impact.setVisible(hitting).setPosition(endX, endY);
+
+      if (hitting && !ship.dying && t < BEAM_RAMP + BEAM_HOLD) {
+        beam.impact.setDisplaySize(70 + Math.random() * 30, 70 + Math.random() * 30).setAlpha(power);
+        if (!beam.connected) {
+          beam.connected = true;
+          this.cameras.main.shake(160, 0.004);
+        }
+        const tick = weapon.damage * (delta / (BEAM_RAMP + BEAM_HOLD));
+        target.hull -= tick;
+        beam.pixelPool += tick;
+        if (beam.pixelPool > 26) {
+          this.applyPixelDamage(target, endX, endY, beam.pixelPool);
+          beam.pixelPool = 0;
+        }
+        if (time > beam.lastSpark + 130) {
+          beam.lastSpark = time;
+          this.burst(endX, endY, 3);
+        }
+        if (target === this.player && time > (this.lastBeamHitSound ?? 0) + 700) {
+          this.lastBeamHitSound = time;
+          this.sound.play('playerHit', { volume: 0.25 });
+        }
+        if (target.hull <= 0 && !this.over) this.startDeath(target);
+      }
+      return true;
+    });
   }
 
   // Turret hardpoints engage on their own when the target is inside their
@@ -337,7 +403,7 @@ export class SandboxScene extends Phaser.Scene {
       if (Phaser.Math.Distance.Between(pos.x, pos.y, target.x, target.y) > weapon.range) return;
       ship.nextFire[i] = time + weapon.delay;
       if (weapon.beam) {
-        this.fireBeam(ship, target, weapon, pos);
+        this.fireBeam(ship, target, weapon, point);
       } else {
         this.fireShot(group, 'battery', pos.x, pos.y, ship.facing, weapon,
           ship === this.player ? 'laserPlayer' : 'laserEnemy');
@@ -499,6 +565,7 @@ export class SandboxScene extends Phaser.Scene {
     this.bgNebula.setTilePosition(cam.scrollX * 0.28, cam.scrollY * 0.28);
 
     this.drawMinimap();
+    this.updateBeams(delta, time);
     this.updateEngine(this.player);
     this.updateEngine(this.enemy);
     this.fires = this.fires.filter((f) => {

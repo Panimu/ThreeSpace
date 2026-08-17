@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { IMAGES, SOUNDS, resolveUrl } from '../manifest.js';
 import { ensureNebula } from '../fx.js';
+import { version } from '../../package.json';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -33,6 +34,14 @@ export class TitleScene extends Phaser.Scene {
     this.add.text(w() / 2, h() * 0.3 + Math.min(64, w() / 9) * 0.75, 'CAPITAL COMMAND', {
       fontFamily: 'monospace', fontSize: 16, color: '#6fb7ff', letterSpacing: 6,
     }).setOrigin(0.5);
+    this.add.text(w() / 2, h() * 0.3 + Math.min(64, w() / 9) * 0.75 + 34,
+      'A FreeSpace-inspired capital ship sandbox: take the helm, trade beam fire\n' +
+      'at range, and break the enemy down pixel by pixel — mount by mount.', {
+        fontFamily: 'monospace', fontSize: 13, color: '#8593a6', align: 'center', lineSpacing: 5,
+      }).setOrigin(0.5, 0);
+    this.add.text(w() - 14, h() - 12, `v${version}`, {
+      fontFamily: 'monospace', fontSize: 12, color: '#5a6678',
+    }).setOrigin(1, 1);
 
     this.makeButton(w() / 2, h() * 0.52, 'SANDBOX', () => this.scene.start('select'));
     this.makeButton(w() / 2, h() * 0.52 + 66, 'REFIT', () => this.scene.start('refit'));
