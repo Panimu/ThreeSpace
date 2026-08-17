@@ -1,0 +1,5 @@
+node_modules/
+dist/
+
+# Personal/local assets (e.g. renders from your own FreeSpace 2 copy) — never committed.
+assets/local/

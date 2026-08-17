@@ -2,10 +2,35 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Repository status
+## Project
 
-ThreeSpace is currently an empty scaffold: the repository contains no source code, no README, and no build/test tooling yet. There are no commands to run and no architecture to document.
+ThreeSpace is a top-down 2D spaceship game loosely inspired by FreeSpace 2, built with
+Phaser 3 and Vite (plain JavaScript, no TypeScript).
 
-When the first real code is added to this repository, update this file with:
-- Build, lint, and test commands (including how to run a single test)
-- The high-level architecture and how major components fit together
+## Commands
+
+- `npm run dev` — start the Vite dev server
+- `npm run build` — production build to `dist/`
+- `npm run preview` — serve the production build
+
+There is no test suite or linter yet.
+
+## Architecture
+
+- `src/main.js` boots Phaser (arcade physics, resizing canvas).
+- `src/scenes/BattleScene.js` is the whole game right now: player flight model,
+  enemy fighter AI, cruiser turret, lasers, particles, HUD, win/lose flow.
+- `src/manifest.js` is the asset manifest: **all** art/sound is resolved through it.
+  Each image entry carries `angleOffset` (degrees to align the art with facing 0 = east)
+  and `scale`. Never hardcode asset paths in scenes — add manifest entries.
+- `assets/` is served as the Vite `publicDir`, so manifest URLs are paths relative to
+  `assets/` (e.g. `space-shooter-redux/PNG/...`).
+- Facing convention: entities store `facing` in radians (0 = east); `syncAngle()` applies
+  the sprite's `angleOffset`. Use `facing` for thrust/aim math, never `sprite.rotation`.
+
+## Asset licensing (important)
+
+`assets/README.md` is the license inventory — keep it updated when adding assets.
+Kenney packs are CC0; MillionthVector packs are CC-BY 4.0 (credit required in shipped
+builds). Original FreeSpace 2 game data is proprietary and must never be committed;
+personal local assets belong in `assets/local/` (gitignored).
