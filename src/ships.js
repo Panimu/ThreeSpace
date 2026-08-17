@@ -114,6 +114,68 @@ export const SHIPS = {
     ],
     desc: 'FUTURE COMMAND — six kilometers, twenty years, and the industrial output of two species. There is one of it.',
   },
+  // ---- Vasudan line (user picks, Vasudan casting board 2026-08):
+  // Aten→Hai Anomalocaris, Mentu→Hai Cicada, Sobek→Wanderer Derecho,
+  // Typhon→Aaulqra, Hatshepsut→Wanderer Winter Gale.
+
+  aten: {
+    name: 'GVC Aten', cls: 'Cruiser', faction: 'Vasudan (allied)',
+    url: 'endless-sky/ship/hai anomalocaris.png', scale: 0.95,
+    hull: 380, speed: 90, turn: 30, accel: 36,
+    hardpoints: [
+      hp('spinal', 'railgun', 0, 0.42),
+      hp('turret', 'laserTurret', 0.16, 0.05),
+      hp('turret', 'laserTurret', -0.16, -0.2),
+    ],
+    desc: 'A shell with guns, serving since the Great War. Terran pilots joke about the Aten until one holds a jump node alone for six hours.',
+  },
+  mentu: {
+    name: 'GVC Mentu', cls: 'Cruiser', faction: 'Vasudan (allied)',
+    url: 'endless-sky/ship/hai cicada.png', scale: 1.0,
+    hull: 500, speed: 88, turn: 29, accel: 33,
+    hardpoints: [
+      hp('spinal', 'railgun', 0, 0.44),
+      hp('turret', 'laserTurret', 0.18, 0.15),
+      hp('turret', 'laserTurret', -0.18, 0.15),
+      hp('turret', 'laserTurret', 0, -0.32),
+    ],
+    desc: 'The Aten’s successor: segmented, scaled, and twice the ship. The carapace is armor; the elegance is free.',
+  },
+  sobek: {
+    name: 'GVCv Sobek', cls: 'Corvette', faction: 'Vasudan (allied)',
+    url: 'endless-sky/ship/derecho.png', scale: 1.2,
+    hull: 820, speed: 72, turn: 23, accel: 27,
+    hardpoints: [
+      hp('spinal', 'heavyRailgun', 0, 0.44),
+      hp('turret', 'laserTurret', 0.16, 0.12),
+      hp('turret', 'laserTurret', -0.16, 0.12),
+      hp('turret', 'laserTurret', 0, -0.3),
+    ],
+    desc: 'Swept curves over a killer’s frame. The Sobek escorts like a crocodile floats — calmly, and then all at once.',
+  },
+  typhon: {
+    name: 'GVD Typhon', cls: 'Destroyer', faction: 'Vasudan (allied)',
+    url: 'endless-sky/ship/aaulqra.png', scale: 2.0,
+    hull: 1500, speed: 50, turn: 12, accel: 16,
+    hardpoints: [
+      hp('spinal', 'beamLance', 0, 0.42),
+      hp('turret', 'laserTurret', 0.18, 0.2), hp('turret', 'laserTurret', -0.18, 0.2),
+      hp('turret', 'laserTurret', 0.18, -0.22), hp('turret', 'laserTurret', -0.18, -0.22),
+    ],
+    desc: 'The ancient temple-ship of the Great War, two kilometers of patience. Half the fleet’s admirals learned command on a Typhon deck.',
+  },
+  hatshepsut: {
+    name: 'GVD Hatshepsut', cls: 'Destroyer', faction: 'Vasudan (allied)',
+    url: 'endless-sky/ship/winter gale.png', scale: 2.0,
+    hull: 1550, speed: 58, turn: 15, accel: 19,
+    hardpoints: [
+      hp('spinal', 'beamLance', 0, 0.45),
+      hp('turret', 'laserTurret', 0.16, 0.25), hp('turret', 'laserTurret', -0.16, 0.25),
+      hp('turret', 'flakTurret', 0.16, -0.2), hp('turret', 'flakTurret', -0.16, -0.2),
+    ],
+    desc: 'The pharaoh’s flagship: a sculpted prow on a hull that moves like calligraphy. The beam cannon under all that elegance is not decorative.',
+  },
+
   // ---- Shivan line (user picks, Shivan casting board 2026-08):
   // Cain/Lilith→Remnant Ibis, Rakshasa→Ka'het Telis'het, Moloch→Ka'het
   // Vareti'het, Demon→Quarg Hydra, Ravana→Quarg Guivre, Lucifer→Remnant
