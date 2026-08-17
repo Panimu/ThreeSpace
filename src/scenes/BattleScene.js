@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { IMAGES, SOUNDS } from '../manifest.js';
+import { IMAGES, SOUNDS, resolveUrl } from '../manifest.js';
 
 const WORLD_W = 4000;
 const WORLD_H = 3000;
@@ -15,8 +15,8 @@ export class BattleScene extends Phaser.Scene {
   }
 
   preload() {
-    for (const [key, def] of Object.entries(IMAGES)) this.load.image(key, def.url);
-    for (const [key, def] of Object.entries(SOUNDS)) this.load.audio(key, def.url);
+    for (const [key, def] of Object.entries(IMAGES)) this.load.image(key, resolveUrl(def.url));
+    for (const [key, def] of Object.entries(SOUNDS)) this.load.audio(key, resolveUrl(def.url));
   }
 
   create() {
@@ -53,12 +53,76 @@ export class BattleScene extends Phaser.Scene {
     this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H).startFollow(this.player, false, 0.08, 0.08);
 
     this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,LEFT,RIGHT,SPACE,SHIFT,R');
+    this.touch = { active: false, steer: 0, thrust: 0, fire: false, burn: false };
+    if (this.sys.game.device.input.touch) this.createTouchControls();
     this.hud = this.add.text(12, 10, '', { fontFamily: 'monospace', fontSize: 16, color: '#9fd8ff' })
       .setScrollFactor(0).setDepth(10);
     this.banner = this.add.text(this.scale.width / 2, this.scale.height / 2, '', {
       fontFamily: 'monospace', fontSize: 34, color: '#ffffff', align: 'center',
     }).setOrigin(0.5).setScrollFactor(0).setDepth(10);
     this.over = false;
+  }
+
+  createTouchControls() {
+    this.input.addPointer(2);
+    const STICK_R = 70;
+
+    this.stickBase = this.add.circle(0, 0, STICK_R, 0xffffff, 0.08)
+      .setStrokeStyle(2, 0x9fd8ff, 0.3).setScrollFactor(0).setDepth(20).setVisible(false);
+    this.stickNub = this.add.circle(0, 0, 30, 0x9fd8ff, 0.3).setScrollFactor(0).setDepth(20).setVisible(false);
+    this.stickPointerId = null;
+
+    this.input.on('pointerdown', (p) => {
+      if (p.x < this.scale.width * 0.5 && this.stickPointerId === null) {
+        this.stickPointerId = p.id;
+        this.stickBase.setPosition(p.x, p.y).setVisible(true);
+        this.stickNub.setPosition(p.x, p.y).setVisible(true);
+        this.touch.active = true;
+      }
+    });
+    this.input.on('pointermove', (p) => {
+      if (p.id !== this.stickPointerId) return;
+      const dx = p.x - this.stickBase.x;
+      const dy = p.y - this.stickBase.y;
+      const len = Math.hypot(dx, dy);
+      const clamped = Math.min(len, STICK_R);
+      this.touch.steer = Math.atan2(dy, dx);
+      this.touch.thrust = clamped / STICK_R;
+      this.stickNub.setPosition(
+        this.stickBase.x + (len ? (dx / len) * clamped : 0),
+        this.stickBase.y + (len ? (dy / len) * clamped : 0),
+      );
+    });
+    const releaseStick = (p) => {
+      if (p.id !== this.stickPointerId) return;
+      this.stickPointerId = null;
+      this.touch.active = false;
+      this.touch.thrust = 0;
+      this.stickBase.setVisible(false);
+      this.stickNub.setVisible(false);
+    };
+    this.input.on('pointerup', releaseStick);
+    this.input.on('pointerupoutside', releaseStick);
+
+    const makeButton = (label, color, offsetY, onDown, onUp) => {
+      const btn = this.add.circle(0, 0, 44, color, 0.22)
+        .setStrokeStyle(2, color, 0.5).setScrollFactor(0).setDepth(20)
+        .setInteractive({ useHandCursor: false });
+      const text = this.add.text(0, 0, label, { fontFamily: 'monospace', fontSize: 15, color: '#ffffff' })
+        .setOrigin(0.5).setScrollFactor(0).setDepth(21);
+      btn.on('pointerdown', () => { onDown(); if (this.over) this.scene.restart(); });
+      btn.on('pointerup', onUp);
+      btn.on('pointerout', onUp);
+      const place = () => {
+        btn.setPosition(this.scale.width - 78, this.scale.height - offsetY);
+        text.setPosition(btn.x, btn.y);
+      };
+      place();
+      this.scale.on('resize', place);
+      return btn;
+    };
+    makeButton('FIRE', 0xff5555, 96, () => { this.touch.fire = true; }, () => { this.touch.fire = false; });
+    makeButton('BURN', 0xffaa33, 208, () => { this.touch.burn = true; }, () => { this.touch.burn = false; });
   }
 
   spawnShip(key, x, y, hull, maxSpeed) {
@@ -141,19 +205,24 @@ export class BattleScene extends Phaser.Scene {
 
     // --- player flight ---
     const turn = PLAYER.turnRate * DEG * dt;
-    if (this.keys.A.isDown || this.keys.LEFT.isDown) this.player.facing -= turn;
-    if (this.keys.D.isDown || this.keys.RIGHT.isDown) this.player.facing += turn;
+    if (this.touch.active) {
+      this.player.facing = Phaser.Math.Angle.RotateTo(this.player.facing, this.touch.steer, turn);
+    } else {
+      if (this.keys.A.isDown || this.keys.LEFT.isDown) this.player.facing -= turn;
+      if (this.keys.D.isDown || this.keys.RIGHT.isDown) this.player.facing += turn;
+    }
     this.player.syncAngle();
 
-    const burning = this.keys.SHIFT.isDown;
+    const burning = this.keys.SHIFT.isDown || this.touch.burn;
     this.player.setMaxVelocity(burning ? PLAYER.burnSpeed : PLAYER.maxSpeed);
-    if (this.keys.W.isDown || this.keys.UP.isDown) {
-      this.physics.velocityFromRotation(this.player.facing, PLAYER.accel * (burning ? 2.2 : 1), this.player.body.acceleration);
+    const thrust = (this.keys.W.isDown || this.keys.UP.isDown) ? 1 : this.touch.thrust;
+    if (thrust > 0) {
+      this.physics.velocityFromRotation(this.player.facing, PLAYER.accel * thrust * (burning ? 2.2 : 1), this.player.body.acceleration);
     } else {
       this.player.setAcceleration(0);
     }
 
-    if (this.keys.SPACE.isDown && time > this.fireAt && !this.over) {
+    if ((this.keys.SPACE.isDown || this.touch.fire) && time > this.fireAt && !this.over) {
       this.fireAt = time + PLAYER.fireDelay;
       this.fireLaser(this.playerLasers, 'laserPlayer', this.player, 700, 'laserPlayer');
     }

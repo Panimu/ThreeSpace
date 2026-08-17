@@ -7,6 +7,12 @@
 // angleOffset: degrees added to the entity's facing so the art points the right
 // way (facing 0 = east). Art drawn pointing up needs 90, pointing left needs 180.
 
+// In single-file builds (scripts/build-artifact.mjs), assets are embedded as data
+// URIs on window.__ASSETS__ keyed by these same paths.
+export function resolveUrl(path) {
+  return (typeof window !== 'undefined' && window.__ASSETS__?.[path]) || path;
+}
+
 export const IMAGES = {
   player:       { url: 'millionthvector/faction5-spaceships/F5S1.png', angleOffset: 90, scale: 0.35 },
   enemyFighter: { url: 'millionthvector/faction6-spaceships/RD2.png', angleOffset: 90, scale: 0.3 },
