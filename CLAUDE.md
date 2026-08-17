@@ -21,8 +21,14 @@ There is no test suite or linter yet.
 - The player commands **capital ships** (FS2-inspired pacing): throttle-based helm,
   slow turns, auto-engaging turrets, bow-aligned main battery. Progression plan:
   small capitals → larger hulls → multi-ship fleets.
-- Scenes: `TitleScene` (menu, preloads all assets) → `SandboxScene` (capital duel)
-  and `WikiScene` (ship registry browser).
+- Scenes: `TitleScene` (menu, preloads all assets) → `SelectScene` (pick command +
+  opposition) → `SandboxScene` (capital duel), plus `WikiScene` (ship registry) and
+  `RefitScene` (wireframe hardpoint refitting; per-browser persistence via
+  `src/refit.js`, which mutates the SHIPS catalog in place).
+- `SandboxScene` zooms out for big matchups; scrollFactor-0 UI must be placed via
+  `toUI()` and scaled by `1/zoomFactor` or camera zoom shrinks it.
+- `assets/derived/` holds faction recolors (gold-shift Vasudan, red-shift Shivan)
+  baked by `scripts/recolor-factions.mjs` — re-run it after changing ship casts.
 - `src/ships.js` is the ship catalog: stats, wiki copy, sprite reference, and
   **hardpoints** per hull. Add ships here, not in scenes. Hardpoints are mounts
   ({type, fitted, x, y} — hull-fraction coords, +y toward bow) with a fitted

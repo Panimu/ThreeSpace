@@ -13,23 +13,35 @@ export class SandboxScene extends Phaser.Scene {
     super('sandbox');
   }
 
-  create() {
+  create(data) {
+    this.playerKey = data?.player ?? this.playerKey ?? 'fenris';
+    this.enemyKey = data?.enemy ?? this.enemyKey ?? 'cain';
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     this.bg = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'background')
       .setOrigin(0).setScrollFactor(0);
-    this.scale.on('resize', (s) => this.bg.setSize(s.width, s.height));
 
     this.playerShots = this.physics.add.group();
     this.enemyShots = this.physics.add.group();
 
-    this.player = this.spawnCapital('fenris', 1200, WORLD_H / 2, 20 * DEG);
-    this.enemy = this.spawnCapital('cain', WORLD_W - 1400, WORLD_H / 2, 200 * DEG);
+    this.player = this.spawnCapital(this.playerKey, 1200, WORLD_H / 2, 20 * DEG);
+    this.enemy = this.spawnCapital(this.enemyKey, WORLD_W - 1400, WORLD_H / 2, 200 * DEG);
 
     this.physics.add.overlap(this.playerShots, this.enemy, (_e, shot) => this.hit(shot, this.enemy));
     this.physics.add.overlap(this.enemyShots, this.player, (_p, shot) => this.hit(shot, this.player));
 
+    const biggest = Math.max(this.player.displayHeight, this.enemy.displayHeight);
+    this.zoomFactor = Phaser.Math.Clamp(240 / biggest, 0.4, 0.9);
     this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H)
-      .startFollow(this.player, false, 0.06, 0.06).setZoom(0.85);
+      .startFollow(this.player, false, 0.06, 0.06)
+      .setZoom(this.zoomFactor);
+    // The scrollFactor-0 backdrop shrinks with zoom; oversize it to compensate.
+    const fitBg = () => {
+      const origin = this.toUI(0, 0);
+      this.bg.setPosition(origin.x, origin.y)
+        .setSize(this.scale.width / this.zoomFactor, this.scale.height / this.zoomFactor);
+    };
+    fitBg();
+    this.scale.on('resize', fitBg);
 
     this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE,R,ESC');
     this.input.keyboard.on('keydown-ESC', () => this.scene.start('title'));
@@ -37,12 +49,20 @@ export class SandboxScene extends Phaser.Scene {
     this.touch = { active: false, steer: 0, throttle: 0, fire: false };
     if (this.sys.game.device.input.touch) this.createTouchControls();
 
-    this.hud = this.add.text(12, 10, '', { fontFamily: 'monospace', fontSize: 15, color: '#9fd8ff' })
-      .setScrollFactor(0).setDepth(10);
+    const uiPos = this.toUI(12, 10);
+    this.hud = this.add.text(uiPos.x, uiPos.y, '', { fontFamily: 'monospace', fontSize: 15, color: '#9fd8ff' })
+      .setScrollFactor(0).setDepth(10).setScale(1 / this.zoomFactor);
     this.banner = this.add.text(this.scale.width / 2, this.scale.height / 2, '', {
       fontFamily: 'monospace', fontSize: 32, color: '#ffffff', align: 'center',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(10);
+    }).setOrigin(0.5).setScrollFactor(0).setDepth(10).setScale(1 / this.zoomFactor);
     this.over = false;
+  }
+
+  // Camera zoom also scales scrollFactor-0 objects; this maps a desired
+  // on-screen position to the coordinate that renders there at current zoom.
+  toUI(sx, sy) {
+    const w = this.scale.width / 2, h = this.scale.height / 2;
+    return { x: (sx - w) / this.zoomFactor + w, y: (sy - h) / this.zoomFactor + h };
   }
 
   // Each ship gets a private canvas copy of its sprite so combat can erode it
@@ -253,24 +273,29 @@ export class SandboxScene extends Phaser.Scene {
     this.stickNub = this.add.circle(0, 0, 30, 0x9fd8ff, 0.3).setScrollFactor(0).setDepth(20).setVisible(false);
     this.stickPointerId = null;
 
+    this.stickBase.setScale(1 / this.zoomFactor);
+    this.stickNub.setScale(1 / this.zoomFactor);
     this.input.on('pointerdown', (p) => {
       if (p.x < this.scale.width * 0.5 && this.stickPointerId === null) {
         this.stickPointerId = p.id;
-        this.stickBase.setPosition(p.x, p.y).setVisible(true);
-        this.stickNub.setPosition(p.x, p.y).setVisible(true);
+        this.stickScreen = { x: p.x, y: p.y };
+        const pos = this.toUI(p.x, p.y);
+        this.stickBase.setPosition(pos.x, pos.y).setVisible(true);
+        this.stickNub.setPosition(pos.x, pos.y).setVisible(true);
         this.touch.active = true;
       }
     });
     this.input.on('pointermove', (p) => {
       if (p.id !== this.stickPointerId) return;
-      const dx = p.x - this.stickBase.x, dy = p.y - this.stickBase.y;
+      const dx = p.x - this.stickScreen.x, dy = p.y - this.stickScreen.y;
       const len = Math.hypot(dx, dy), clamped = Math.min(len, STICK_R);
       this.touch.steer = Math.atan2(dy, dx);
       this.touch.throttle = clamped / STICK_R;
-      this.stickNub.setPosition(
-        this.stickBase.x + (len ? (dx / len) * clamped : 0),
-        this.stickBase.y + (len ? (dy / len) * clamped : 0),
+      const nub = this.toUI(
+        this.stickScreen.x + (len ? (dx / len) * clamped : 0),
+        this.stickScreen.y + (len ? (dy / len) * clamped : 0),
       );
+      this.stickNub.setPosition(nub.x, nub.y);
     });
     const release = (p) => {
       if (p.id !== this.stickPointerId) return;
@@ -289,8 +314,11 @@ export class SandboxScene extends Phaser.Scene {
     btn.on('pointerdown', () => { this.touch.fire = true; if (this.over) this.scene.restart(); });
     btn.on('pointerup', () => { this.touch.fire = false; });
     btn.on('pointerout', () => { this.touch.fire = false; });
+    btn.setScale(1 / this.zoomFactor);
+    label.setScale(1 / this.zoomFactor);
     const place = () => {
-      btn.setPosition(this.scale.width - 80, this.scale.height - 100);
+      const pos = this.toUI(this.scale.width - 80, this.scale.height - 100);
+      btn.setPosition(pos.x, pos.y);
       label.setPosition(btn.x, btn.y);
     };
     place();
@@ -344,7 +372,7 @@ export class SandboxScene extends Phaser.Scene {
       `MOUNTS ${mountsUp}/${spec.hardpoints.length}   ` +
       `THROTTLE ${Math.round(this.player.throttle * 100)}%   ` +
       `BATTERY ${batteryReady ? 'READY' : '· · ·'}   ` +
-      `HOSTILE ${this.enemy.active ? Math.max(0, Math.round(this.enemy.hull)) : 0}/${SHIPS.cain.hull}`,
+      `HOSTILE ${this.enemy.active ? Math.max(0, Math.round(this.enemy.hull)) : 0}/${SHIPS[this.enemyKey].hull}`,
     );
   }
 }

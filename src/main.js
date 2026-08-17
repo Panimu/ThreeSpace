@@ -1,7 +1,12 @@
 import Phaser from 'phaser';
 import { TitleScene } from './scenes/TitleScene.js';
+import { SelectScene } from './scenes/SelectScene.js';
 import { SandboxScene } from './scenes/SandboxScene.js';
 import { WikiScene } from './scenes/WikiScene.js';
+import { RefitScene } from './scenes/RefitScene.js';
+import { loadRefits } from './refit.js';
+
+loadRefits();
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -15,5 +20,5 @@ new Phaser.Game({
   physics: {
     default: 'arcade',
   },
-  scene: [TitleScene, SandboxScene, WikiScene],
+  scene: [TitleScene, SelectScene, SandboxScene, WikiScene, RefitScene],
 });

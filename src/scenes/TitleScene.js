@@ -31,15 +31,16 @@ export class TitleScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: 16, color: '#6fb7ff', letterSpacing: 6,
     }).setOrigin(0.5);
 
-    this.makeButton(w() / 2, h() * 0.55, 'SANDBOX', () => this.scene.start('sandbox'));
-    this.makeButton(w() / 2, h() * 0.55 + 74, 'WIKI', () => this.scene.start('wiki'));
+    this.makeButton(w() / 2, h() * 0.52, 'SANDBOX', () => this.scene.start('select'));
+    this.makeButton(w() / 2, h() * 0.52 + 66, 'REFIT', () => this.scene.start('refit'));
+    this.makeButton(w() / 2, h() * 0.52 + 132, 'WIKI', () => this.scene.start('wiki'));
 
     this.add.text(w() / 2, h() - 16,
       'Art: Endless Sky (CC-BY-SA 4.0) · MillionthVector (CC-BY 4.0) · Kenney (CC0)', {
         fontFamily: 'monospace', fontSize: 11, color: '#5a6678',
       }).setOrigin(0.5, 1);
 
-    this.input.keyboard.on('keydown-ENTER', () => this.scene.start('sandbox'));
+    this.input.keyboard.on('keydown-ENTER', () => this.scene.start('select'));
   }
 
   makeButton(x, y, label, onClick) {

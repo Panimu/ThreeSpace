@@ -120,7 +120,7 @@ export const SHIPS = {
 
   aten: {
     name: 'GVC Aten', cls: 'Cruiser', faction: 'Vasudan (allied)',
-    url: 'endless-sky/ship/hai anomalocaris.png', scale: 0.95,
+    url: 'derived/vasudan/hai anomalocaris.png', scale: 0.95,
     hull: 380, speed: 90, turn: 30, accel: 36,
     hardpoints: [
       hp('spinal', 'railgun', 0, 0.42),
@@ -131,7 +131,7 @@ export const SHIPS = {
   },
   mentu: {
     name: 'GVC Mentu', cls: 'Cruiser', faction: 'Vasudan (allied)',
-    url: 'endless-sky/ship/hai cicada.png', scale: 1.0,
+    url: 'derived/vasudan/hai cicada.png', scale: 1.0,
     hull: 500, speed: 88, turn: 29, accel: 33,
     hardpoints: [
       hp('spinal', 'railgun', 0, 0.44),
@@ -143,7 +143,7 @@ export const SHIPS = {
   },
   sobek: {
     name: 'GVCv Sobek', cls: 'Corvette', faction: 'Vasudan (allied)',
-    url: 'endless-sky/ship/derecho.png', scale: 1.2,
+    url: 'derived/vasudan/derecho.png', scale: 1.2,
     hull: 820, speed: 72, turn: 23, accel: 27,
     hardpoints: [
       hp('spinal', 'heavyRailgun', 0, 0.44),
@@ -155,7 +155,7 @@ export const SHIPS = {
   },
   typhon: {
     name: 'GVD Typhon', cls: 'Destroyer', faction: 'Vasudan (allied)',
-    url: 'endless-sky/ship/aaulqra.png', scale: 2.0,
+    url: 'derived/vasudan/aaulqra.png', scale: 2.0,
     hull: 1500, speed: 50, turn: 12, accel: 16,
     hardpoints: [
       hp('spinal', 'beamLance', 0, 0.42),
@@ -166,7 +166,7 @@ export const SHIPS = {
   },
   hatshepsut: {
     name: 'GVD Hatshepsut', cls: 'Destroyer', faction: 'Vasudan (allied)',
-    url: 'endless-sky/ship/winter gale.png', scale: 2.0,
+    url: 'derived/vasudan/winter gale.png', scale: 2.0,
     hull: 1550, speed: 58, turn: 15, accel: 19,
     hardpoints: [
       hp('spinal', 'beamLance', 0, 0.45),
@@ -183,7 +183,7 @@ export const SHIPS = {
 
   cain: {
     name: 'SC Cain', cls: 'Cruiser', faction: 'Shivan',
-    url: 'endless-sky/ship/ibis.png', scale: 1.0,
+    url: 'derived/shivan/ibis.png', scale: 1.0,
     hull: 400, speed: 95, turn: 32, accel: 38,
     hardpoints: [
       hp('spinal', 'railgun', 0, 0.45),
@@ -195,7 +195,7 @@ export const SHIPS = {
   },
   lilith: {
     name: 'SC Lilith', cls: 'Heavy cruiser', faction: 'Shivan',
-    url: 'endless-sky/ship/ibis.png', scale: 1.15,
+    url: 'derived/shivan/ibis.png', scale: 1.15,
     hull: 550, speed: 75, turn: 24, accel: 28,
     hardpoints: [
       hp('spinal', 'beamLance', 0, 0.45),
@@ -207,7 +207,7 @@ export const SHIPS = {
   },
   rakshasa: {
     name: 'SC Rakshasa', cls: 'Cruiser', faction: 'Shivan',
-    url: "endless-sky/ship/telis'het.png", scale: 1.0,
+    url: "derived/shivan/telis'het.png", scale: 1.0,
     hull: 480, speed: 85, turn: 28, accel: 32,
     hardpoints: [
       hp('spinal', 'heavyRailgun', 0, 0.42),
@@ -220,7 +220,7 @@ export const SHIPS = {
   },
   moloch: {
     name: 'SCv Moloch', cls: 'Corvette', faction: 'Shivan',
-    url: "endless-sky/ship/vareti'het.png", scale: 1.2,
+    url: "derived/shivan/vareti'het.png", scale: 1.2,
     hull: 750, speed: 70, turn: 22, accel: 26,
     hardpoints: [
       hp('spinal', 'heavyRailgun', 0, 0.42),
@@ -233,7 +233,7 @@ export const SHIPS = {
   },
   demon: {
     name: 'SD Demon', cls: 'Destroyer', faction: 'Shivan',
-    url: 'endless-sky/ship/quarg hydra.png', scale: 1.8,
+    url: 'derived/shivan/quarg hydra.png', scale: 1.8,
     hull: 1500, speed: 55, turn: 14, accel: 18,
     hardpoints: [
       hp('spinal', 'beamLance', 0, 0.44),
@@ -245,7 +245,7 @@ export const SHIPS = {
   },
   ravana: {
     name: 'SD Ravana', cls: 'Destroyer', faction: 'Shivan',
-    url: 'endless-sky/ship/quarg guivre.png', scale: 1.8,
+    url: 'derived/shivan/quarg guivre.png', scale: 1.8,
     hull: 1400, speed: 55, turn: 15, accel: 18,
     hardpoints: [
       hp('spinal', 'beamLance', 0.1, 0.44),
@@ -258,7 +258,7 @@ export const SHIPS = {
   },
   lucifer: {
     name: 'SD Lucifer', cls: 'Superdestroyer', faction: 'Shivan',
-    url: 'endless-sky/ship/albatross.png', scale: 2.6,
+    url: 'derived/shivan/albatross.png', scale: 2.6,
     hull: 2600, speed: 50, turn: 10, accel: 14,
     hardpoints: [
       hp('spinal', 'beamLance', 0.08, 0.45),
@@ -271,7 +271,7 @@ export const SHIPS = {
   },
   sathanas: {
     name: 'SJ Sathanas', cls: 'Juggernaut', faction: 'Shivan',
-    url: 'endless-sky/ship/kar ik vot 349.png', scale: 3.0,
+    url: 'derived/shivan/kar ik vot 349.png', scale: 3.0,
     hull: 3200, speed: 45, turn: 8, accel: 12,
     hardpoints: [
       hp('spinal', 'beamLance', 0.12, 0.42), hp('spinal', 'beamLance', -0.12, 0.42),
