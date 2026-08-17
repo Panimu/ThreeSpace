@@ -26,7 +26,7 @@ export class SandboxScene extends Phaser.Scene {
     this.playerShots = this.physics.add.group();
     this.enemyShots = this.physics.add.group();
 
-    this.player = this.spawnCapital('frigate', 1200, WORLD_H / 2, 20 * DEG);
+    this.player = this.spawnCapital('fenris', 1200, WORLD_H / 2, 20 * DEG);
     this.enemy = this.spawnCapital('raider', WORLD_W - 1400, WORLD_H / 2, 200 * DEG);
 
     this.physics.add.overlap(this.playerShots, this.enemy, (_e, shot) => this.hit(shot, this.enemy));

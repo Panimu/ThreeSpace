@@ -20,7 +20,7 @@ export class TitleScene extends Phaser.Scene {
     this.scale.on('resize', (s) => this.bg.setSize(s.width, s.height));
 
     // A battleship drifts through the backdrop for scale.
-    this.drifter = this.add.image(w() * 0.75, h() * 0.35, 'ship_leviathan')
+    this.drifter = this.add.image(w() * 0.75, h() * 0.35, 'ship_colossus')
       .setRotation(Math.PI / 7).setAlpha(0.5).setScale(1.4);
 
     this.add.text(w() / 2, h() * 0.3, 'THREESPACE', {
