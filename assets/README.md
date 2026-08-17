@@ -8,13 +8,18 @@ attribution; CC-BY packs require crediting the author (e.g. in an in-game credit
 | `space-shooter-redux/` | Kenney (kenney.nl), via [OpenGameArt](https://opengameart.org/content/space-shooter-redux) | CC0 |
 | `space-shooter-extension/` | Kenney (kenney.nl), via [OpenGameArt](https://opengameart.org/content/space-shooter-extension-250) | CC0 |
 | `millionthvector/faction*` | MillionthVector (millionthvector.blogspot.de), via [OpenGameArt](https://opengameart.org/content/set-faction1-spaceships) | CC-BY 4.0 — credit "MillionthVector" |
+| `endless-sky/ship/` | [Endless Sky](https://github.com/endless-sky/endless-sky) (Michael Zahniser & contributors) | CC-BY-SA 4.0 (a few CC0) — see `endless-sky/copyright` |
 
 Each pack retains its bundled license/credits file. The MillionthVector faction packs
 (fighters, cruisers, carriers, stations across 10 factions) include `*_normal.png`
 normal maps usable for dynamic lighting.
 
-Required attribution line for shipped builds:
-"Spaceship sprites by MillionthVector (http://millionthvector.blogspot.de), CC-BY 4.0"
+Required attribution lines for shipped builds:
+- "Spaceship sprites by MillionthVector (http://millionthvector.blogspot.de), CC-BY 4.0"
+- "Ship sprites from Endless Sky (https://github.com/endless-sky/endless-sky) by Michael
+  Zahniser and contributors, CC-BY-SA 4.0" — note: share-alike applies to derivatives of
+  this art (edited/rebaked sprites must stay CC-BY-SA); per-file authorship is in
+  `endless-sky/copyright` and `endless-sky/credits.txt`.
 
 Note: original FreeSpace 2 game data (models, textures, sounds) is proprietary
 (Interplay/THQ Nordic) and must not be added to this repository.
