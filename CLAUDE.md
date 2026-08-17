@@ -23,8 +23,13 @@ There is no test suite or linter yet.
   small capitals → larger hulls → multi-ship fleets.
 - Scenes: `TitleScene` (menu, preloads all assets) → `SandboxScene` (capital duel)
   and `WikiScene` (ship registry browser).
-- `src/ships.js` is the ship catalog: stats, wiki copy, sprite reference per hull.
-  Add ships here, not in scenes.
+- `src/ships.js` is the ship catalog: stats, wiki copy, sprite reference, and
+  **hardpoints** per hull. Add ships here, not in scenes. Hardpoints are mounts
+  ({type, fitted, x, y} — hull-fraction coords, +y toward bow) with a fitted
+  weapon from the `WEAPONS` table; combat fires from these positions and the
+  wiki draws them as markers. Planned direction: a wireframe refit screen where
+  the player re-fits hardpoints and other systems — build on this data, don't
+  invent parallel structures.
 - `src/manifest.js` is the asset manifest: **all** art/sound is resolved through it.
   Each image entry carries `angleOffset` (degrees to align the art with facing 0 = east)
   and `scale`. Never hardcode asset paths in scenes — add manifest entries.

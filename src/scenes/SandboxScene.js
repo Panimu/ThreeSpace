@@ -1,16 +1,12 @@
 import Phaser from 'phaser';
 import { IMAGES, SOUNDS } from '../manifest.js';
-import { SHIPS } from '../ships.js';
+import { SHIPS, WEAPONS } from '../ships.js';
 
 const WORLD_W = 6000;
 const WORLD_H = 4000;
 const DEG = Math.PI / 180;
-const TURRET_RANGE = 700;
-const TURRET_DELAY = 1400;
-const TURRET_DAMAGE = 12;
-const BATTERY_RANGE = 950;
-const BATTERY_DELAY = 3200;
 const BATTERY_ARC = 14 * DEG;
+const ENGAGE_RANGE = 700; // enemy AI's preferred gun range
 
 export class SandboxScene extends Phaser.Scene {
   constructor() {
@@ -61,9 +57,20 @@ export class SandboxScene extends Phaser.Scene {
     ship.angleOffset = IMAGES[`ship_${key}`].angleOffset * DEG;
     ship.syncAngle = () => ship.setRotation(ship.facing + ship.angleOffset);
     ship.syncAngle();
-    ship.nextTurret = new Array(spec.turrets).fill(0);
-    ship.nextBattery = 0;
+    ship.nextFire = spec.hardpoints.map(() => 0);
     return ship;
+  }
+
+  // World position of a hardpoint: y runs along the hull toward the bow,
+  // x is lateral. Sprite height is hull length (art faces up).
+  hardpointPos(ship, point) {
+    const along = point.y * ship.displayHeight;
+    const lateral = point.x * ship.displayWidth;
+    const cos = Math.cos(ship.facing), sin = Math.sin(ship.facing);
+    return {
+      x: ship.x + cos * along - sin * lateral,
+      y: ship.y + sin * along + cos * lateral,
+    };
   }
 
   // Heavy helm: velocity eases toward facing * maxSpeed * throttle.
@@ -89,34 +96,45 @@ export class SandboxScene extends Phaser.Scene {
     this.sound.play(sound, { volume: SOUNDS[sound].volume });
   }
 
-  // Turrets sit along the hull spine and engage on their own when in range/arc.
+  // Turret hardpoints engage on their own when the target is inside their
+  // fitted weapon's range; each fires from its real mount position.
   runTurrets(ship, target, group, laserKey, sound, time) {
     if (!target.active) return;
-    const dist = Phaser.Math.Distance.Between(ship.x, ship.y, target.x, target.y);
-    if (dist > TURRET_RANGE) return;
-    const n = ship.spec.turrets;
-    for (let i = 0; i < n; i++) {
-      if (time < ship.nextTurret[i]) continue;
-      ship.nextTurret[i] = time + TURRET_DELAY + Math.random() * 400;
-      const along = (i / Math.max(1, n - 1) - 0.5) * ship.displayHeight * 0.6;
-      const tx = ship.x + Math.cos(ship.facing) * along;
-      const ty = ship.y + Math.sin(ship.facing) * along;
-      const aim = Phaser.Math.Angle.Between(tx, ty, target.x, target.y) + (Math.random() - 0.5) * 4 * DEG;
-      this.fireShot(group, laserKey, tx, ty, aim, 520, sound, TURRET_DAMAGE);
-    }
+    ship.spec.hardpoints.forEach((point, i) => {
+      const weapon = WEAPONS[point.fitted];
+      if (weapon.type !== 'turret' || time < ship.nextFire[i]) return;
+      const pos = this.hardpointPos(ship, point);
+      const dist = Phaser.Math.Distance.Between(pos.x, pos.y, target.x, target.y);
+      if (dist > weapon.range) return;
+      ship.nextFire[i] = time + weapon.delay + Math.random() * 300;
+      const aim = Phaser.Math.Angle.Between(pos.x, pos.y, target.x, target.y) + (Math.random() - 0.5) * 4 * DEG;
+      this.fireShot(group, laserKey, pos.x, pos.y, aim, weapon.speed, sound, weapon.damage);
+    });
   }
 
+  // Spinal mounts fire together on the battery trigger, but only when the bow
+  // is actually laid on the target.
   tryBattery(ship, target, group, time) {
-    if (!target.active || time < ship.nextBattery || !ship.spec.batteryDamage) return false;
-    const dist = Phaser.Math.Distance.Between(ship.x, ship.y, target.x, target.y);
+    if (!target.active) return false;
     const aim = Phaser.Math.Angle.Between(ship.x, ship.y, target.x, target.y);
-    if (dist > BATTERY_RANGE || Math.abs(Phaser.Math.Angle.Wrap(aim - ship.facing)) > BATTERY_ARC) return false;
-    ship.nextBattery = time + BATTERY_DELAY;
-    const bow = ship.displayHeight * 0.55;
-    this.fireShot(group, 'battery',
-      ship.x + Math.cos(ship.facing) * bow, ship.y + Math.sin(ship.facing) * bow,
-      ship.facing, 640, ship === this.player ? 'laserPlayer' : 'laserEnemy', ship.spec.batteryDamage);
-    return true;
+    if (Math.abs(Phaser.Math.Angle.Wrap(aim - ship.facing)) > BATTERY_ARC) return false;
+    let fired = false;
+    ship.spec.hardpoints.forEach((point, i) => {
+      const weapon = WEAPONS[point.fitted];
+      if (weapon.type !== 'spinal' || time < ship.nextFire[i]) return;
+      const pos = this.hardpointPos(ship, point);
+      if (Phaser.Math.Distance.Between(pos.x, pos.y, target.x, target.y) > weapon.range) return;
+      ship.nextFire[i] = time + weapon.delay;
+      this.fireShot(group, 'battery', pos.x, pos.y, ship.facing, weapon.speed,
+        ship === this.player ? 'laserPlayer' : 'laserEnemy', weapon.damage);
+      fired = true;
+    });
+    return fired;
+  }
+
+  batteryReady(ship, time) {
+    return ship.spec.hardpoints.some((point, i) =>
+      WEAPONS[point.fitted].type === 'spinal' && time >= ship.nextFire[i]);
   }
 
   hit(shot, ship) {
@@ -234,15 +252,15 @@ export class SandboxScene extends Phaser.Scene {
       const e = this.enemy;
       const dist = Phaser.Math.Distance.Between(e.x, e.y, this.player.x, this.player.y);
       const bearing = Phaser.Math.Angle.Between(e.x, e.y, this.player.x, this.player.y);
-      const want = dist > TURRET_RANGE * 0.85 ? bearing : bearing + 70 * DEG;
+      const want = dist > ENGAGE_RANGE * 0.85 ? bearing : bearing + 70 * DEG;
       e.facing = Phaser.Math.Angle.RotateTo(e.facing, want, e.spec.turn * DEG * dt);
-      e.throttle = dist > TURRET_RANGE * 0.5 ? 1 : 0.45;
+      e.throttle = dist > ENGAGE_RANGE * 0.5 ? 1 : 0.45;
       this.steerCapital(e, dt);
       this.runTurrets(e, this.player, this.enemyShots, 'laserEnemy', 'laserEnemy', time);
       this.tryBattery(e, this.player, this.enemyShots, time);
     }
 
-    const batteryReady = time >= this.player.nextBattery;
+    const batteryReady = this.batteryReady(this.player, time);
     this.hud.setText(
       `${spec.name.toUpperCase()}  HULL ${Math.max(0, Math.round(this.player.hull))}/${spec.hull}   ` +
       `THROTTLE ${Math.round(this.player.throttle * 100)}%   ` +

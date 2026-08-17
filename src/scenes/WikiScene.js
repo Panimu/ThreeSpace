@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
-import { SHIPS } from '../ships.js';
+import { SHIPS, WEAPONS, armamentSummary } from '../ships.js';
+
+const HP_COLORS = { spinal: 0xffb454, turret: 0x6fb7ff };
 
 const ENTRY_H = 170;
 
@@ -59,6 +61,16 @@ export class WikiScene extends Phaser.Scene {
     sprite.setScale(Math.min(cap, 1));
     c.add(sprite);
 
+    // Hardpoint markers over the sprite (art faces up: +y in hull coords is up).
+    // Precursor to the wireframe refit view — same data drives combat.
+    for (const point of ship.hardpoints) {
+      const mx = sprite.x + point.x * sprite.displayWidth;
+      const my = sprite.y - point.y * sprite.displayHeight;
+      const color = HP_COLORS[WEAPONS[point.fitted].type];
+      c.add(this.add.circle(mx, my, 4).setStrokeStyle(1.5, color, 0.95));
+      c.add(this.add.circle(mx, my, 1.2, color, 0.9));
+    }
+
     const color = ship.hostile ? '#ff8a7a' : '#d8e2ee';
     c.add(this.add.text(170, 28, `${ship.name.toUpperCase()}`, {
       fontFamily: 'monospace', fontSize: 18, color, letterSpacing: 2,
@@ -67,8 +79,7 @@ export class WikiScene extends Phaser.Scene {
       fontFamily: 'monospace', fontSize: 12, color: '#6fb7ff',
     }));
     c.add(this.add.text(170, 74,
-      `HULL ${ship.hull}   SPEED ${ship.speed}   TURN ${ship.turn}°/s   TURRETS ${ship.turrets}` +
-      (ship.batteryDamage ? `   BATTERY ${ship.batteryDamage}` : ''), {
+      `HULL ${ship.hull}   SPEED ${ship.speed}   TURN ${ship.turn}°/s   ARMAMENT ${armamentSummary(ship)}`, {
         fontFamily: 'monospace', fontSize: 12, color: '#8593a6',
       }));
     c.add(this.add.text(170, 98, ship.desc, {
