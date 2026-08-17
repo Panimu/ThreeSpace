@@ -18,8 +18,13 @@ There is no test suite or linter yet.
 ## Architecture
 
 - `src/main.js` boots Phaser (arcade physics, resizing canvas).
-- `src/scenes/BattleScene.js` is the whole game right now: player flight model,
-  enemy fighter AI, cruiser turret, lasers, particles, HUD, win/lose flow.
+- The player commands **capital ships** (FS2-inspired pacing): throttle-based helm,
+  slow turns, auto-engaging turrets, bow-aligned main battery. Progression plan:
+  small capitals → larger hulls → multi-ship fleets.
+- Scenes: `TitleScene` (menu, preloads all assets) → `SandboxScene` (capital duel)
+  and `WikiScene` (ship registry browser).
+- `src/ships.js` is the ship catalog: stats, wiki copy, sprite reference per hull.
+  Add ships here, not in scenes.
 - `src/manifest.js` is the asset manifest: **all** art/sound is resolved through it.
   Each image entry carries `angleOffset` (degrees to align the art with facing 0 = east)
   and `scale`. Never hardcode asset paths in scenes — add manifest entries.

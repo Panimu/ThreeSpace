@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
-import { BattleScene } from './scenes/BattleScene.js';
+import { TitleScene } from './scenes/TitleScene.js';
+import { SandboxScene } from './scenes/SandboxScene.js';
+import { WikiScene } from './scenes/WikiScene.js';
 
 new Phaser.Game({
   type: Phaser.AUTO,
@@ -13,5 +15,5 @@ new Phaser.Game({
   physics: {
     default: 'arcade',
   },
-  scene: [BattleScene],
+  scene: [TitleScene, SandboxScene, WikiScene],
 });

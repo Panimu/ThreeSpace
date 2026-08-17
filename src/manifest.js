@@ -7,6 +7,8 @@
 // angleOffset: degrees added to the entity's facing so the art points the right
 // way (facing 0 = east). Art drawn pointing up needs 90, pointing left needs 180.
 
+import { SHIPS } from './ships.js';
+
 // In single-file builds (scripts/build-artifact.mjs), assets are embedded as data
 // URIs on window.__ASSETS__ keyed by these same paths.
 export function resolveUrl(path) {
@@ -14,14 +16,17 @@ export function resolveUrl(path) {
 }
 
 export const IMAGES = {
-  player:       { url: 'millionthvector/faction5-spaceships/F5S1.png', angleOffset: 90, scale: 0.35 },
-  enemyFighter: { url: 'millionthvector/faction6-spaceships/RD2.png', angleOffset: 90, scale: 0.3 },
-  enemyCruiser: { url: 'millionthvector/faction9-spaceships/bluecruiser.png', angleOffset: 180, scale: 1.2 },
   laserPlayer:  { url: 'space-shooter-redux/PNG/Lasers/laserBlue01.png', angleOffset: 90, scale: 0.8 },
   laserEnemy:   { url: 'space-shooter-redux/PNG/Lasers/laserRed05.png', angleOffset: 90, scale: 0.8 },
+  battery:      { url: 'space-shooter-redux/PNG/Lasers/laserBlue16.png', angleOffset: 90, scale: 1.4 },
   spark:        { url: 'space-shooter-redux/PNG/Effects/star1.png' },
-  background:   { url: 'space-shooter-redux/Backgrounds/darkPurple.png' },
+  background:   { url: 'space-shooter-redux/Backgrounds/black.png' },
 };
+
+// Every catalog ship is loadable by its key (Endless Sky art faces up).
+for (const [key, ship] of Object.entries(SHIPS)) {
+  IMAGES[`ship_${key}`] = { url: ship.url, angleOffset: 90, scale: ship.scale ?? 1 };
+}
 
 export const SOUNDS = {
   laserPlayer: { url: 'space-shooter-redux/Bonus/sfx_laser1.ogg', volume: 0.25 },
