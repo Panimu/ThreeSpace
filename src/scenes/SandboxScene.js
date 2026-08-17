@@ -45,9 +45,43 @@ export class SandboxScene extends Phaser.Scene {
     this.over = false;
   }
 
+  // Each ship gets a private canvas copy of its sprite so combat can erode it
+  // pixel by pixel. Hardpoints die when the hull under them is shot away.
+  makeDamageCanvas(key) {
+    const src = this.textures.get(`ship_${key}`).getSourceImage();
+    const texKey = `dmg_${key}_${this.dmgCounter = (this.dmgCounter ?? 0) + 1}`;
+    const canvas = this.textures.createCanvas(texKey, src.width, src.height);
+    canvas.context.drawImage(src, 0, 0);
+    canvas.refresh();
+    (this.dmgKeys ??= []).push(texKey);
+    this.events.once('shutdown', () => this.textures.remove(texKey));
+    return texKey;
+  }
+
+  mountRegion(ship, point) {
+    const w = ship.damageCanvas.width, h = ship.damageCanvas.height;
+    return { cx: w / 2 + point.x * w, cy: h / 2 - point.y * h, r: Math.max(8, Math.min(w, h) * 0.13) };
+  }
+
+  countOpaque(canvasTex, reg) {
+    const x0 = Math.max(0, Math.round(reg.cx - reg.r));
+    const y0 = Math.max(0, Math.round(reg.cy - reg.r));
+    const size = Math.round(reg.r * 2);
+    const data = canvasTex.context.getImageData(x0, y0, size, size).data;
+    let count = 0;
+    for (let py = 0; py < size; py++) {
+      for (let px = 0; px < size; px++) {
+        const dx = x0 + px - reg.cx, dy = y0 + py - reg.cy;
+        if (dx * dx + dy * dy <= reg.r * reg.r && data[(py * size + px) * 4 + 3] > 60) count++;
+      }
+    }
+    return count;
+  }
+
   spawnCapital(key, x, y, facing) {
     const spec = SHIPS[key];
-    const ship = this.physics.add.image(x, y, `ship_${key}`);
+    const ship = this.physics.add.image(x, y, this.makeDamageCanvas(key));
+    ship.damageCanvas = this.textures.get(ship.texture.key);
     ship.setScale(IMAGES[`ship_${key}`].scale);
     ship.body.setSize(ship.width * 0.75, ship.height * 0.75, true);
     ship.spec = spec;
@@ -58,7 +92,48 @@ export class SandboxScene extends Phaser.Scene {
     ship.syncAngle = () => ship.setRotation(ship.facing + ship.angleOffset);
     ship.syncAngle();
     ship.nextFire = spec.hardpoints.map(() => 0);
+    ship.mountDisabled = spec.hardpoints.map(() => false);
+    ship.mountBaseline = spec.hardpoints.map((point) =>
+      this.countOpaque(ship.damageCanvas, this.mountRegion(ship, point)));
     return ship;
+  }
+
+  // Erode pixels around the impact; area scales with damage relative to hull.
+  applyPixelDamage(ship, wx, wy, damage) {
+    const tex = ship.damageCanvas;
+    const ctx = tex.context;
+    const w = tex.width, h = tex.height;
+    const cos = Math.cos(-ship.rotation), sin = Math.sin(-ship.rotation);
+    const dx = wx - ship.x, dy = wy - ship.y;
+    const lx = (dx * cos - dy * sin) / ship.scaleX + w / 2;
+    const ly = (dx * sin + dy * cos) / ship.scaleY + h / 2;
+
+    const budget = (damage / ship.spec.hull) * w * h * 0.5;
+    const spread = Math.min(w, h) * 0.11;
+    ctx.globalCompositeOperation = 'destination-out';
+    for (let spent = 0; spent < budget;) {
+      const r = Phaser.Math.Between(2, 5);
+      const ang = Math.random() * Math.PI * 2;
+      const dist = Math.random() * spread;
+      ctx.beginPath();
+      ctx.arc(lx + Math.cos(ang) * dist, ly + Math.sin(ang) * dist, r, 0, Math.PI * 2);
+      ctx.fill();
+      spent += Math.PI * r * r;
+    }
+    ctx.globalCompositeOperation = 'source-over';
+    tex.refresh();
+
+    ship.spec.hardpoints.forEach((point, i) => {
+      if (ship.mountDisabled[i] || ship.mountBaseline[i] < 20) return;
+      const reg = this.mountRegion(ship, point);
+      if (Math.hypot(reg.cx - lx, reg.cy - ly) > reg.r + spread + 6) return;
+      if (this.countOpaque(tex, reg) / ship.mountBaseline[i] < 0.55) {
+        ship.mountDisabled[i] = true;
+        const pos = this.hardpointPos(ship, point);
+        this.burst(pos.x, pos.y, 14);
+        this.sound.play('explosion', { volume: 0.25 });
+      }
+    });
   }
 
   // World position of a hardpoint: y runs along the hull toward the bow,
@@ -102,7 +177,7 @@ export class SandboxScene extends Phaser.Scene {
     if (!target.active) return;
     ship.spec.hardpoints.forEach((point, i) => {
       const weapon = WEAPONS[point.fitted];
-      if (weapon.type !== 'turret' || time < ship.nextFire[i]) return;
+      if (weapon.type !== 'turret' || ship.mountDisabled[i] || time < ship.nextFire[i]) return;
       const pos = this.hardpointPos(ship, point);
       const dist = Phaser.Math.Distance.Between(pos.x, pos.y, target.x, target.y);
       if (dist > weapon.range) return;
@@ -121,7 +196,7 @@ export class SandboxScene extends Phaser.Scene {
     let fired = false;
     ship.spec.hardpoints.forEach((point, i) => {
       const weapon = WEAPONS[point.fitted];
-      if (weapon.type !== 'spinal' || time < ship.nextFire[i]) return;
+      if (weapon.type !== 'spinal' || ship.mountDisabled[i] || time < ship.nextFire[i]) return;
       const pos = this.hardpointPos(ship, point);
       if (Phaser.Math.Distance.Between(pos.x, pos.y, target.x, target.y) > weapon.range) return;
       ship.nextFire[i] = time + weapon.delay;
@@ -134,14 +209,16 @@ export class SandboxScene extends Phaser.Scene {
 
   batteryReady(ship, time) {
     return ship.spec.hardpoints.some((point, i) =>
-      WEAPONS[point.fitted].type === 'spinal' && time >= ship.nextFire[i]);
+      WEAPONS[point.fitted].type === 'spinal' && !ship.mountDisabled[i] && time >= ship.nextFire[i]);
   }
 
   hit(shot, ship) {
-    const damage = shot.damage ?? TURRET_DAMAGE;
+    const damage = shot.damage ?? 10;
+    const { x, y } = shot;
     shot.destroy();
     ship.hull -= damage;
-    this.burst(shot.x, shot.y, 5);
+    this.applyPixelDamage(ship, x, y, damage);
+    this.burst(x, y, 5);
     if (ship === this.player) this.sound.play('playerHit', { volume: 0.3 });
     if (ship.hull <= 0 && !this.over) {
       this.burst(ship.x, ship.y, 40);
@@ -261,8 +338,10 @@ export class SandboxScene extends Phaser.Scene {
     }
 
     const batteryReady = this.batteryReady(this.player, time);
+    const mountsUp = this.player.mountDisabled.filter((d) => !d).length;
     this.hud.setText(
       `${spec.name.toUpperCase()}  HULL ${Math.max(0, Math.round(this.player.hull))}/${spec.hull}   ` +
+      `MOUNTS ${mountsUp}/${spec.hardpoints.length}   ` +
       `THROTTLE ${Math.round(this.player.throttle * 100)}%   ` +
       `BATTERY ${batteryReady ? 'READY' : '· · ·'}   ` +
       `HOSTILE ${this.enemy.active ? Math.max(0, Math.round(this.enemy.hull)) : 0}/${SHIPS.cain.hull}`,
