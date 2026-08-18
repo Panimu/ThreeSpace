@@ -1,11 +1,14 @@
 import Phaser from 'phaser';
 import { IMAGES, SOUNDS } from '../manifest.js';
 import { SHIPS, WEAPONS } from '../ships.js';
-import { ensureNebula, ensureBeamTextures, factionColor } from '../fx.js';
+import { ensureNebula, ensureBeamTextures, factionColor, beamPalette } from '../fx.js';
 
-const BEAM_RAMP = 110;
-const BEAM_HOLD = 560;
-const BEAM_FADE = 230;
+// FS2 beam envelope: the muzzle charges visibly, then the beam erupts and
+// burns for seconds — a slow, devastating event, not a shot.
+const BEAM_CHARGE = 650;
+const BEAM_RAMP = 140;
+const BEAM_HOLD = 2600;
+const BEAM_FADE = 300;
 
 const WORLD_W = 6000;
 const WORLD_H = 4000;
@@ -292,37 +295,60 @@ export class SandboxScene extends Phaser.Scene {
   // Beams are sustained: they sweep with the firing ship for ~0.9s and deal
   // their damage continuously while the ray is actually on the target.
   fireBeam(ship, target, weapon, point) {
-    const add = (key, depth) => this.add.image(0, 0, key)
-      .setOrigin(0, 0.5).setBlendMode(Phaser.BlendModes.ADD).setDepth(depth).setVisible(false);
+    const palette = beamPalette(ship.spec);
+    const strip = (key, depth, tint) => this.add.image(0, 0, key)
+      .setOrigin(0, 0.5).setBlendMode(Phaser.BlendModes.ADD).setDepth(depth)
+      .setTint(tint).setVisible(false);
+    const orb = (tint) => this.add.image(0, 0, 'glow-orb')
+      .setBlendMode(Phaser.BlendModes.ADD).setDepth(5).setTint(tint).setVisible(false);
     const beam = {
-      ship, target, weapon, point, elapsed: 0, pixelPool: 0, connected: false, lastSpark: 0,
-      halo: add('beam-halo', 4).setTint(ship.accent),
-      core: add('beam-core', 5),
-      muzzle: this.add.image(0, 0, 'glow-orb').setBlendMode(Phaser.BlendModes.ADD)
-        .setDepth(5).setTint(ship.accent).setVisible(false),
-      impact: this.add.image(0, 0, 'glow-orb').setBlendMode(Phaser.BlendModes.ADD)
-        .setDepth(5).setVisible(false),
+      ship, target, weapon, point, palette,
+      elapsed: 0, pixelPool: 0, connected: false, lastSpark: 0, fired: false,
+      halo: strip('beam-halo', 4, palette.outer),
+      mid: strip('beam-halo', 4, palette.mid),
+      core: strip('beam-core', 5, 0xffffff),
+      flare: strip('beam-halo', 5, palette.mid), // fat cone at the muzzle
+      muzzle: orb(0xffffff),
+      impact: orb(palette.mid),
     };
     this.beams.push(beam);
-    this.sound.play('beam', { volume: SOUNDS.beam.volume });
+    this.sound.play('beam', { volume: 0.15 }); // charge-up cue
+  }
+
+  beamParts(beam) {
+    return [beam.halo, beam.mid, beam.core, beam.flare, beam.muzzle, beam.impact];
   }
 
   updateBeams(delta, time) {
     this.beams = this.beams.filter((beam) => {
       const { ship, target, weapon, point } = beam;
       beam.elapsed += delta;
-      const total = BEAM_RAMP + BEAM_HOLD + BEAM_FADE;
+      const total = BEAM_CHARGE + BEAM_RAMP + BEAM_HOLD + BEAM_FADE;
       if (beam.elapsed >= total || !ship.active) {
-        for (const part of [beam.halo, beam.core, beam.muzzle, beam.impact]) part.destroy();
+        for (const part of this.beamParts(beam)) part.destroy();
         return false;
       }
-      const t = beam.elapsed;
+      const pos = this.hardpointPos(ship, point);
+      const dir = ship.facing;
+
+      // Charge phase: the muzzle glow swells before the beam erupts.
+      if (beam.elapsed < BEAM_CHARGE) {
+        const charge = beam.elapsed / BEAM_CHARGE;
+        const size = (30 + 80 * charge) * (0.9 + Math.random() * 0.2);
+        beam.muzzle.setVisible(true).setPosition(pos.x, pos.y)
+          .setDisplaySize(size, size).setAlpha(0.5 + 0.5 * charge);
+        return true;
+      }
+
+      const t = beam.elapsed - BEAM_CHARGE;
+      if (!beam.fired) {
+        beam.fired = true;
+        this.sound.play('beam', { volume: SOUNDS.beam.volume });
+      }
       const power = t < BEAM_RAMP ? t / BEAM_RAMP
         : t < BEAM_RAMP + BEAM_HOLD ? 0.86 + Math.random() * 0.14
         : 1 - (t - BEAM_RAMP - BEAM_HOLD) / BEAM_FADE;
 
-      const pos = this.hardpointPos(ship, point);
-      const dir = ship.facing;
       let length = weapon.range;
       let hitting = false;
       if (target.active && !target.dying) {
@@ -338,16 +364,20 @@ export class SandboxScene extends Phaser.Scene {
       const endX = pos.x + Math.cos(dir) * length;
       const endY = pos.y + Math.sin(dir) * length;
 
-      beam.halo.setVisible(true).setPosition(pos.x, pos.y).setRotation(dir)
-        .setDisplaySize(length, 46 * power).setAlpha(0.85 * power);
-      beam.core.setVisible(true).setPosition(pos.x, pos.y).setRotation(dir)
-        .setDisplaySize(length, 9 * power).setAlpha(power);
+      // Wide outer glow → yellow-white inner glow → white core, per reference.
+      const place = (img, height, alpha, len = length) => img.setVisible(true)
+        .setPosition(pos.x, pos.y).setRotation(dir)
+        .setDisplaySize(len, height).setAlpha(alpha);
+      place(beam.halo, 74 * power, 0.7 * power);
+      place(beam.mid, 34 * power, 0.85 * power);
+      place(beam.core, 9 * power, power);
+      place(beam.flare, 90 * power, 0.9 * power, 150); // eruption cone at the muzzle
       beam.muzzle.setVisible(true).setPosition(pos.x, pos.y)
-        .setDisplaySize(64 * power, 64 * power).setAlpha(power);
+        .setDisplaySize(120 * power, 120 * power).setAlpha(power);
       beam.impact.setVisible(hitting).setPosition(endX, endY);
 
       if (hitting && !ship.dying && t < BEAM_RAMP + BEAM_HOLD) {
-        beam.impact.setDisplaySize(70 + Math.random() * 30, 70 + Math.random() * 30).setAlpha(power);
+        beam.impact.setDisplaySize(100 + Math.random() * 45, 100 + Math.random() * 45).setAlpha(power);
         if (!beam.connected) {
           beam.connected = true;
           this.cameras.main.shake(160, 0.004);
@@ -359,9 +389,9 @@ export class SandboxScene extends Phaser.Scene {
           this.applyPixelDamage(target, endX, endY, beam.pixelPool);
           beam.pixelPool = 0;
         }
-        if (time > beam.lastSpark + 130) {
+        if (time > beam.lastSpark + 110) {
           beam.lastSpark = time;
-          this.burst(endX, endY, 3);
+          this.burst(endX, endY, 4);
         }
         if (target === this.player && time > (this.lastBeamHitSound ?? 0) + 700) {
           this.lastBeamHitSound = time;

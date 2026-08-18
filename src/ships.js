@@ -18,7 +18,7 @@ export const WEAPONS = {
   flakTurret:  { name: 'Flak turret', type: 'turret', damage: 5, range: 500, delay: 900, speed: 380 },
   railgun:     { name: 'Railgun', type: 'spinal', damage: 70, range: 1200, delay: 5000, speed: 520 },
   heavyRailgun:{ name: 'Heavy railgun', type: 'spinal', damage: 110, range: 1300, delay: 6000, speed: 540 },
-  beamLance:   { name: 'Beam lance', type: 'spinal', damage: 180, range: 1600, delay: 8000, speed: 600, beam: true },
+  beamLance:   { name: 'Beam lance', type: 'spinal', damage: 260, range: 1600, delay: 9000, speed: 600, beam: true },
 };
 
 const hp = (type, fitted, x, y) => ({ type, fitted, x, y });

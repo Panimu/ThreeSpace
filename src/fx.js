@@ -8,13 +8,14 @@ export function ensureNebula(scene) {
   const size = 1024;
   const tex = scene.textures.createCanvas('nebula', size, size);
   const ctx = tex.context;
-  const hues = [[88, 52, 150], [36, 90, 110], [140, 60, 120], [46, 66, 158]];
-  for (let i = 0; i < 46; i++) {
+  // FS2 nebulae are loud: saturated purple and teal, not a faint wash.
+  const hues = [[130, 60, 190], [30, 140, 150], [170, 50, 150], [60, 80, 200]];
+  for (let i = 0; i < 60; i++) {
     const [r, g, b] = hues[i % hues.length];
     const x = Math.random() * size, y = Math.random() * size;
     const rad = 90 + Math.random() * 230;
     const grad = ctx.createRadialGradient(x, y, 0, x, y, rad);
-    grad.addColorStop(0, `rgba(${r},${g},${b},${0.05 + Math.random() * 0.07})`);
+    grad.addColorStop(0, `rgba(${r},${g},${b},${0.1 + Math.random() * 0.12})`);
     grad.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = grad;
     for (const dx of [-size, 0, size]) {
@@ -57,9 +58,17 @@ export function ensureBeamTextures(scene) {
   orb.refresh();
 }
 
-// Faction accent used for engines and beams.
+// Faction accent used for engines and muzzle flashes.
 export function factionColor(spec) {
   if (spec.faction === 'Shivan') return 0xff5040;
   if (spec.faction.startsWith('Vasudan')) return 0xffd070;
   return 0x66b7ff;
+}
+
+// FS2 beam palettes: GTVA/Vasudan beams are green with a yellow-white inner
+// glow; Shivan beams are red with an orange inner glow. Core is always white.
+export function beamPalette(spec) {
+  return spec.faction === 'Shivan'
+    ? { outer: 0xff3822, mid: 0xffb066 }
+    : { outer: 0x46ff5e, mid: 0xe8ffb0 };
 }
