@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { IMAGES, resolveUrl } from '../manifest.js';
-import { ensureNebula, ensureStarfield } from '../fx.js';
+import { ensureNebula, ensureStarfield, ensureBeamTextures } from '../fx.js';
+import { TitleBattle } from '../titlebattle.js';
 import { version } from '../../package.json';
 
 export class TitleScene extends Phaser.Scene {
@@ -19,13 +20,13 @@ export class TitleScene extends Phaser.Scene {
 
     ensureNebula(this);
     ensureStarfield(this);
+    ensureBeamTextures(this);
     this.bg = this.add.tileSprite(0, 0, w(), h(), 'starfield').setOrigin(0).setScrollFactor(0);
     this.nebula = this.add.tileSprite(0, 0, w(), h(), 'nebula').setOrigin(0).setScrollFactor(0).setAlpha(0.85);
     this.scale.on('resize', (s) => { this.bg.setSize(s.width, s.height); this.nebula.setSize(s.width, s.height); });
 
-    // A battleship drifts through the backdrop for scale.
-    this.drifter = this.add.image(w() * 0.75, h() * 0.35, 'ship_colossus')
-      .setRotation(Math.PI / 7).setAlpha(0.5).setScale(0.7);
+    // An endless, silent capital duel plays out behind the menu.
+    this.battle = new TitleBattle(this);
 
     this.add.text(w() / 2, h() * 0.3, 'THREESPACE', {
       fontFamily: 'monospace', fontSize: Math.min(64, w() / 9), fontStyle: 'bold',
@@ -67,10 +68,8 @@ export class TitleScene extends Phaser.Scene {
     return [zone, text];
   }
 
-  update(_, delta) {
+  update(time, delta) {
     this.nebula.tilePositionX += (delta / 1000) * 3;
-    this.drifter.x -= (delta / 1000) * 6;
-    this.drifter.y += (delta / 1000) * 1.5;
-    if (this.drifter.x < -300) this.drifter.setPosition(this.scale.width + 300, this.scale.height * 0.25);
+    this.battle.update(time, delta);
   }
 }
