@@ -17,5 +17,6 @@ Note: original FreeSpace 2 game data (models, textures, sounds) is proprietary
 Personal local assets belong in `assets/local/` (gitignored, never committed).
 
 Sliced game-ready sprites:
-- `ships/<faction>/` — capital ships cut from the capital sheets (alpha-keyed).
+- `ships/<faction>/` — capital ships cut from the capital sheets, plus all 42
+  fighters/bombers cut from fighters-bombers.png (alpha-keyed).
 - `fx/` — beam bodies, bolt cores, flak burst cut from the ordnance sheet.

@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { SHIPS, WEAPONS, armamentSummary } from '../ships.js';
+import { SHIPS, WEAPONS, armamentSummary, complementSummary } from '../ships.js';
 import { ensureStarfield } from '../fx.js';
 
 const HP_COLORS = { spinal: 0xffb454, turret: 0x6fb7ff };
@@ -80,11 +80,14 @@ export class WikiScene extends Phaser.Scene {
     c.add(this.add.text(330, 44, `${ship.cls} · ${ship.faction}`, {
       fontFamily: 'monospace', fontSize: 12, color: '#6fb7ff',
     }));
+    const complement = complementSummary(ship);
     c.add(this.add.text(330, 66,
-      `${ship.length} m   HULL ${ship.hull}   SPEED ${ship.speed}   TURN ${ship.turn}°/s\nARMAMENT ${armamentSummary(ship)}`, {
+      `${ship.length} m   HULL ${ship.hull}   SPEED ${ship.speed}   TURN ${ship.turn}°/s\n` +
+      `ARMAMENT ${armamentSummary(ship)}` +
+      (complement ? `\nAIR GROUP ${complement}` : ''), {
         fontFamily: 'monospace', fontSize: 12, color: '#8593a6',
       }));
-    c.add(this.add.text(330, 106, ship.desc, {
+    c.add(this.add.text(330, complement ? 118 : 106, ship.desc, {
       fontFamily: 'monospace', fontSize: 12, color: '#aab6c6',
       wordWrap: { width: this.scale.width - 400 },
     }));

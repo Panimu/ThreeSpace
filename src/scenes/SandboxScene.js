@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { IMAGES } from '../manifest.js';
-import { SHIPS, WEAPONS } from '../ships.js';
+import { SHIPS, STRIKECRAFT, WEAPONS } from '../ships.js';
 import {
   ensureNebula, ensureBeamTextures, ensureStarfield, ensureBoltTexture,
   factionColor, beamPalette, sfx,
@@ -31,10 +31,20 @@ const ZOOM_MIN = 0.15;
 const ZOOM_MAX = 1.5;
 
 // Energy Transfer System: a limited pool split across ship systems.
-// Index = pips allocated (0..4).
+// Index = pips allocated (0..4). Applies to the ship you are conning.
 const WPN_MUL = [1.7, 1.3, 1.0, 0.8, 0.65];  // weapon cooldown multiplier
 const ENG_MUL = [0.55, 0.8, 1.0, 1.15, 1.3]; // speed & turn multiplier
 const REP_RATE = [0, 1.2, 2.5, 4.5, 7];      // hull repaired per second
+
+// Fighter wings: FS2 wings fly four abreast. Wings launch on a cadence per
+// carrier until the hangar is empty; a side keeps at most STRIKE_CAP craft
+// in space so iPhone framerates survive a Colossus air group.
+const WING_SIZE = 4;
+const STRIKE_CAP = 20;
+const LAUNCH_EVERY = 9000;
+
+// Wing orders — the whole friendly air group follows one standing order.
+const ORDERS = ['engage', 'strike', 'screen'];
 
 export class SandboxScene extends Phaser.Scene {
   constructor() {
@@ -42,8 +52,9 @@ export class SandboxScene extends Phaser.Scene {
   }
 
   create(data) {
-    this.playerKey = data?.player ?? this.playerKey ?? 'fenris';
-    this.enemyKey = data?.enemy ?? this.enemyKey ?? 'cain';
+    const toArr = (v, fallback) => (Array.isArray(v) ? [...v] : [v ?? fallback]);
+    this.playerKeys = toArr(data?.player ?? this.playerKeys, 'fenris');
+    this.enemyKeys = toArr(data?.enemy ?? this.enemyKeys, 'cain');
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     ensureNebula(this);
     ensureBeamTextures(this);
@@ -56,20 +67,35 @@ export class SandboxScene extends Phaser.Scene {
       .setOrigin(0).setScrollFactor(0).setAlpha(0.9);
     this.fires = [];
 
-    this.playerShots = this.physics.add.group();
-    this.enemyShots = this.physics.add.group();
+    // Side A is the player's fleet, side B the opposition. Shots are pooled
+    // per side; capital and strike-craft targets sit in physics groups so a
+    // single overlap pair covers every present and future member.
+    this.shots = { A: this.physics.add.group(), B: this.physics.add.group() };
+    this.capGroup = { A: this.physics.add.group(), B: this.physics.add.group() };
+    this.strikeGroup = { A: this.physics.add.group(), B: this.physics.add.group() };
+    this.fleets = { A: [], B: [] };
+    this.strike = { A: [], B: [] };
 
-    this.player = this.spawnCapital(this.playerKey, 1200, WORLD_H / 2, 20 * DEG);
-    this.enemy = this.spawnCapital(this.enemyKey, WORLD_W - 1400, WORLD_H / 2, 200 * DEG);
+    const onShot = (a, b) => this.onShotHit(a, b);
+    this.physics.add.overlap(this.shots.A, this.capGroup.B, onShot);
+    this.physics.add.overlap(this.shots.A, this.strikeGroup.B, onShot);
+    this.physics.add.overlap(this.shots.B, this.capGroup.A, onShot);
+    this.physics.add.overlap(this.shots.B, this.strikeGroup.A, onShot);
 
-    this.physics.add.overlap(this.playerShots, this.enemy, (_e, shot) => this.hit(shot, this.enemy));
-    this.physics.add.overlap(this.enemyShots, this.player, (_p, shot) => this.hit(shot, this.player));
+    this.playerKeys.forEach((key, i) => {
+      const y = WORLD_H / 2 + (i - (this.playerKeys.length - 1) / 2) * 520;
+      this.fleets.A.push(this.spawnCapital(key, 1200, y, 20 * DEG, 'A'));
+    });
+    this.enemyKeys.forEach((key, i) => {
+      const y = WORLD_H / 2 + (i - (this.enemyKeys.length - 1) / 2) * 520;
+      this.fleets.B.push(this.spawnCapital(key, WORLD_W - 1400, y, 200 * DEG, 'B'));
+    });
+    this.conIdx = 0;
 
-    const biggest = Math.max(
-      this.player.displayWidth, this.player.displayHeight,
-      this.enemy.displayWidth, this.enemy.displayHeight);
+    const biggest = Math.max(...[...this.fleets.A, ...this.fleets.B]
+      .map((s) => Math.max(s.displayWidth, s.displayHeight)));
     this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H)
-      .startFollow(this.player, false, 0.06, 0.06)
+      .startFollow(this.con, false, 0.06, 0.06)
       .setZoom(Phaser.Math.Clamp(240 / biggest, ZOOM_MIN, 0.9));
     this.following = true;
 
@@ -83,11 +109,12 @@ export class SandboxScene extends Phaser.Scene {
 
     this.hullBars = this.add.graphics().setDepth(8);
 
-    // Energy Transfer System: the player splits a fixed pool between weapons,
-    // engines and repair. The enemy captain runs a balanced board (all ×1).
+    // Energy Transfer System for the conned ship; helm orders persist after
+    // the finger lifts — capitals keep way on. One standing wing order steers
+    // the whole air group.
     this.energy = { wpn: 2, eng: 2, rep: 2, pool: 8 };
-    // Helm orders persist after the finger lifts — capitals keep way on.
-    this.helm = { steer: this.player.facing, throttle: 0, engaged: false };
+    this.helm = { steer: this.con.facing, throttle: 0, engaged: false };
+    this.wingOrder = 'engage';
 
     this.createMinimap();
     this.createControls();
@@ -104,6 +131,19 @@ export class SandboxScene extends Phaser.Scene {
     this.events.once('shutdown', () => this.scale.off('resize', onResize));
   }
 
+  // The capital currently under the player's hand.
+  get con() {
+    return this.fleets.A[this.conIdx];
+  }
+
+  setCon(i) {
+    const ship = this.fleets.A[i];
+    if (!ship?.active || ship.dying) return;
+    this.conIdx = i;
+    this.helm = { steer: ship.facing, throttle: ship.throttle, engaged: false };
+    if (this.following) this.cameras.main.startFollow(ship, false, 0.06, 0.06);
+  }
+
   // Registers a UI object at a screen-anchored position (re-applied on resize).
   uiPlace(obj, anchor) {
     this.uiAnchors.push({ obj, anchor });
@@ -114,7 +154,7 @@ export class SandboxScene extends Phaser.Scene {
   drawHullBars() {
     const g = this.hullBars;
     g.clear();
-    for (const ship of [this.player, this.enemy]) {
+    for (const ship of [...this.fleets.A, ...this.fleets.B]) {
       if (!ship?.active || ship.dying) continue;
       const frac = Phaser.Math.Clamp(ship.hull / ship.spec.hull, 0, 1);
       if (frac >= 1) continue;
@@ -141,18 +181,21 @@ export class SandboxScene extends Phaser.Scene {
     g.lineStyle(1, 0x2b3a52, 1).strokeRect(0, 0, MM_W, this.mmH);
     const view = this.cameras.main.worldView;
     g.lineStyle(1, 0x3a4a62, 0.9).strokeRect(px(view.x), py(view.y), px(view.width), py(view.height));
-    const blip = (ship, color) => {
+    const blip = (ship, color, ring) => {
       if (!ship.active) return;
       const x = px(ship.x), y = py(ship.y);
       g.fillStyle(color, 1).fillCircle(x, y, 3);
       g.lineStyle(1, color, 0.9).lineBetween(x, y, x + Math.cos(ship.facing) * 8, y + Math.sin(ship.facing) * 8);
+      if (ring) g.lineStyle(1, 0xffffff, 0.8).strokeCircle(x, y, 5);
     };
-    blip(this.player, 0x6fb7ff);
-    blip(this.enemy, 0xff6a5e);
+    this.fleets.A.forEach((s, i) => blip(s, 0x6fb7ff, i === this.conIdx));
+    for (const s of this.fleets.B) blip(s, 0xff6a5e, false);
+    for (const f of this.strike.A) g.fillStyle(0x9fd8ff, 0.9).fillRect(px(f.x), py(f.y), 1.5, 1.5);
+    for (const f of this.strike.B) g.fillStyle(0xffa08a, 0.9).fillRect(px(f.x), py(f.y), 1.5, 1.5);
   }
 
-  // Each ship gets a private canvas copy of its sprite so combat can erode it
-  // pixel by pixel. Hardpoints die when the hull under them is shot away.
+  // Each capital gets a private canvas copy of its sprite so combat can erode
+  // it pixel by pixel. Hardpoints die when the hull under them is shot away.
   makeDamageCanvas(key) {
     const src = this.textures.get(`ship_${key}`).getSourceImage();
     const texKey = `dmg_${key}_${this.dmgCounter = (this.dmgCounter ?? 0) + 1}`;
@@ -191,7 +234,7 @@ export class SandboxScene extends Phaser.Scene {
     return count;
   }
 
-  spawnCapital(key, x, y, facing) {
+  spawnCapital(key, x, y, facing, side) {
     const spec = SHIPS[key];
     const ship = this.physics.add.image(x, y, this.makeDamageCanvas(key));
     ship.damageCanvas = this.textures.get(ship.texture.key);
@@ -199,6 +242,7 @@ export class SandboxScene extends Phaser.Scene {
     ship.setScale(IMAGES[`ship_${key}`].targetLength / ship.width);
     ship.body.setSize(ship.width * 0.75, ship.height * 0.75, true);
     ship.spec = spec;
+    ship.side = side;
     ship.hull = spec.hull;
     ship.facing = facing;
     ship.throttle = 0;
@@ -216,6 +260,12 @@ export class SandboxScene extends Phaser.Scene {
       frequency: -1, blendMode: 'ADD',
     }).setDepth(2);
     ship.engineOn = false;
+    // Fighterbay: a queue of wings that launch on a cadence until empty.
+    if (spec.hangar) {
+      ship.hangarQueue = spec.hangar.flatMap(({ craft, wings }) => Array(wings).fill(craft));
+      ship.nextLaunch = 0;
+    }
+    this.capGroup[side].add(ship);
     return ship;
   }
 
@@ -234,6 +284,174 @@ export class SandboxScene extends Phaser.Scene {
       ship.engine.stop();
       ship.engineOn = false;
     }
+  }
+
+  // ---- strike craft ------------------------------------------------------
+
+  spawnStrike(key, side, x, y, facing, carrier) {
+    const spec = STRIKECRAFT[key];
+    const craft = this.physics.add.image(x, y, `ship_${key}`);
+    craft.setScale(IMAGES[`ship_${key}`].targetLength / craft.width);
+    craft.spec = spec;
+    craft.side = side;
+    craft.isStrike = true;
+    craft.hull = spec.hull;
+    craft.facing = facing;
+    craft.angleOffset = 0;
+    craft.setRotation(facing);
+    craft.accent = factionColor(spec);
+    craft.carrier = carrier;
+    craft.nextGun = 0;
+    craft.nextBomb = 0;
+    craft.retarget = 0;
+    craft.speedJitter = 0.92 + Math.random() * 0.14;
+    craft.setDepth(3);
+    this.strike[side].push(craft);
+    this.strikeGroup[side].add(craft);
+    return craft;
+  }
+
+  launchWing(carrier, key, time) {
+    const side = carrier.side;
+    const bow = carrier.displayWidth * 0.3;
+    for (let i = 0; i < WING_SIZE; i++) {
+      const lateral = (i - (WING_SIZE - 1) / 2) * 26;
+      const cos = Math.cos(carrier.facing), sin = Math.sin(carrier.facing);
+      this.spawnStrike(key, side,
+        carrier.x + cos * bow - sin * lateral,
+        carrier.y + sin * bow + cos * lateral,
+        carrier.facing, carrier);
+    }
+    carrier.nextLaunch = time + LAUNCH_EVERY;
+    if (side === 'A') sfx('laser');
+  }
+
+  updateHangars(time) {
+    if (this.over) return;
+    for (const side of ['A', 'B']) {
+      if (this.strike[side].length >= STRIKE_CAP) continue;
+      for (const ship of this.fleets[side]) {
+        if (!ship.active || ship.dying || !ship.hangarQueue?.length) continue;
+        if (time < ship.nextLaunch) continue;
+        this.launchWing(ship, ship.hangarQueue.shift(), time);
+        break; // one wing per side per tick keeps launches staggered
+      }
+    }
+  }
+
+  nearestOf(x, y, list, maxRange = Infinity) {
+    let best = null, bestD = maxRange;
+    for (const s of list) {
+      if (!s.active || s.dying) continue;
+      const d = Phaser.Math.Distance.Between(x, y, s.x, s.y);
+      if (d < bestD) { bestD = d; best = s; }
+    }
+    return best;
+  }
+
+  // Aim ahead of a moving target for a projectile of the given speed.
+  leadAngle(x, y, target, projSpeed) {
+    const t = Phaser.Math.Distance.Between(x, y, target.x, target.y) / projSpeed;
+    const vx = target.body?.velocity.x ?? 0, vy = target.body?.velocity.y ?? 0;
+    return Phaser.Math.Angle.Between(x, y, target.x + vx * t, target.y + vy * t);
+  }
+
+  // Independent strike-craft AI: pick a target for the standing order, fly an
+  // attack pattern, break off after a pass. Bombers make torpedo runs on
+  // capitals; fighters dogfight and strafe.
+  updateStrike(dt, time) {
+    for (const side of ['A', 'B']) {
+      const foe = side === 'A' ? 'B' : 'A';
+      const order = side === 'A' ? this.wingOrder
+        : undefined; // hostile air group picks per-craft below
+      this.strike[side] = this.strike[side].filter((craft) => {
+        if (!craft.active) return false;
+        const spec = craft.spec;
+        const isBomber = !!spec.bomb;
+        const myOrder = order ?? (isBomber ? 'strike' : 'engage');
+
+        // Re-pick targets a couple of times a second, not every frame.
+        if (time > craft.retarget || !craft.target?.active || craft.target.dying) {
+          craft.retarget = time + 400 + Math.random() * 300;
+          const caps = this.fleets[foe], wings = this.strike[foe];
+          if (myOrder === 'strike') {
+            craft.target = isBomber
+              ? this.nearestOf(craft.x, craft.y, caps)
+              : this.nearestOf(craft.x, craft.y, wings) ?? this.nearestOf(craft.x, craft.y, caps);
+          } else if (myOrder === 'screen') {
+            const home = craft.carrier?.active ? craft.carrier : this.fleets[side][0];
+            const hx = home?.x ?? craft.x, hy = home?.y ?? craft.y;
+            craft.target = this.nearestOf(hx, hy, wings, 1100)
+              ?? this.nearestOf(hx, hy, caps, 900);
+            craft.home = home;
+          } else { // engage
+            craft.target = this.nearestOf(craft.x, craft.y, wings)
+              ?? this.nearestOf(craft.x, craft.y, caps);
+          }
+        }
+
+        // Desired heading: breakoff waypoint > target > holding pattern.
+        let want = craft.facing;
+        const target = craft.target;
+        if (craft.wp && time < craft.wp.until) {
+          want = Phaser.Math.Angle.Between(craft.x, craft.y, craft.wp.x, craft.wp.y);
+        } else if (target) {
+          craft.wp = null;
+          const dist = Phaser.Math.Distance.Between(craft.x, craft.y, target.x, target.y);
+          const weapon = isBomber && !target.isStrike ? spec.bomb : spec.gun;
+          want = this.leadAngle(craft.x, craft.y, target, weapon.speed);
+          const aligned = Math.abs(Phaser.Math.Angle.Wrap(want - craft.facing)) < 16 * DEG;
+          const nextAt = isBomber && !target.isStrike ? craft.nextBomb : craft.nextGun;
+          if (dist < weapon.range && aligned && time >= nextAt && !this.over) {
+            const quiet = Math.random() > 0.3;
+            this.fireShot(this.shots[side], craft, craft.x, craft.y, want, weapon, quiet);
+            if (isBomber && !target.isStrike) craft.nextBomb = time + weapon.delay;
+            else craft.nextGun = time + weapon.delay * (0.85 + Math.random() * 0.3);
+          }
+          // Break off a strafing run before overflying a capital's hull.
+          const breakAt = target.isStrike ? 90 : Math.max(150, target.displayWidth * 0.45);
+          if (dist < breakAt) {
+            const away = craft.facing + (Math.random() < 0.5 ? 1 : -1) * (100 * DEG);
+            craft.wp = {
+              x: craft.x + Math.cos(away) * 500,
+              y: craft.y + Math.sin(away) * 500,
+              until: time + 1600,
+            };
+          }
+        } else if (craft.home?.active) {
+          // Screen with no contact: orbit the ward.
+          const orbit = time / 3200 + craft.speedJitter * 7;
+          want = Phaser.Math.Angle.Between(craft.x, craft.y,
+            craft.home.x + Math.cos(orbit) * 420, craft.home.y + Math.sin(orbit) * 420);
+        }
+
+        // Stay in the play area.
+        if (craft.x < 150 || craft.x > WORLD_W - 150 || craft.y < 150 || craft.y > WORLD_H - 150) {
+          want = Phaser.Math.Angle.Between(craft.x, craft.y, WORLD_W / 2, WORLD_H / 2);
+          craft.wp = null;
+        }
+
+        craft.facing = Phaser.Math.Angle.RotateTo(craft.facing, want, spec.turn * DEG * dt);
+        const speed = spec.speed * craft.speedJitter;
+        craft.setVelocity(Math.cos(craft.facing) * speed, Math.sin(craft.facing) * speed);
+        craft.setRotation(craft.facing);
+        return true;
+      });
+    }
+  }
+
+  killStrike(craft) {
+    this.burst(craft.x, craft.y, 7);
+    if (Math.random() < 0.4) sfx('boom');
+    craft.destroy();
+  }
+
+  // Routes a lethal hit to the right death: capitals stage explosions and can
+  // end the mission, fighters just pop.
+  checkDeath(target) {
+    if (target.hull > 0 || !target.active) return;
+    if (target.isStrike) this.killStrike(target);
+    else if (!target.dying) this.startDeath(target);
   }
 
   // Erode pixels around the impact; area scales with damage relative to hull.
@@ -312,14 +530,14 @@ export class SandboxScene extends Phaser.Scene {
     this.tweens.add({ targets: flash, scale: 2.2, alpha: 0, duration: 160, onComplete: () => flash.destroy() });
   }
 
-  fireShot(group, ship, x, y, angle, weapon) {
+  fireShot(group, ship, x, y, angle, weapon, quiet = false) {
     const isFlak = !!weapon.burst;
     // Sheet bolt art streaks leftward (bright core at the left edge), so the
     // sprite is rotated 180° from its travel direction.
     const shot = group.create(x, y, weapon.bolt ?? 'bolt');
     shot.setBlendMode(Phaser.BlendModes.ADD);
     if (weapon.bolt) {
-      const len = isFlak ? 20 : weapon.type === 'spinal' ? 52 : 34;
+      const len = isFlak ? 20 : weapon.type === 'spinal' ? 52 : weapon.type === 'turret' ? 34 : 24;
       shot.setDisplaySize(len, Math.max(6, len * (shot.height / shot.width)))
         .setRotation(angle + Math.PI);
     } else {
@@ -328,10 +546,11 @@ export class SandboxScene extends Phaser.Scene {
         .setTint(isFlak ? 0xffcc88 : ship.accent);
     }
     shot.damage = weapon.damage;
+    shot.isShot = true;
     shot.burstFx = isFlak;
     this.physics.velocityFromRotation(angle, weapon.speed, shot.body.velocity);
     this.time.delayedCall((weapon.range / weapon.speed) * 1000 + 250, () => shot.destroy());
-    sfx(isFlak ? 'flak' : weapon.type === 'spinal' ? 'heavy' : 'laser');
+    if (!quiet) sfx(isFlak ? 'flak' : weapon.type === 'spinal' ? 'heavy' : 'laser');
   }
 
   flakBurst(x, y) {
@@ -395,7 +614,8 @@ export class SandboxScene extends Phaser.Scene {
       // beams (AAA, slash) track the target from their mount.
       const dir = beam.turret && target.active
         ? Phaser.Math.Angle.Between(pos.x, pos.y, target.x, target.y)
-        : ship.facing;
+        : beam.turret ? (beam.lastDir ?? ship.facing) : ship.facing;
+      beam.lastDir = dir;
 
       // Charge phase: the muzzle glow swells before the beam erupts.
       if (beam.elapsed < beam.charge) {
@@ -422,7 +642,7 @@ export class SandboxScene extends Phaser.Scene {
         const along = tx * Math.cos(dir) + ty * Math.sin(dir);
         const perp = Math.abs(-Math.sin(dir) * tx + Math.cos(dir) * ty);
         if (along > 0 && along < weapon.range
-          && perp < Math.max(target.displayWidth, target.displayHeight) * 0.35) {
+          && perp < Math.max(target.displayWidth, target.displayHeight) * 0.35 + (target.isStrike ? 10 : 0)) {
           length = along;
           hitting = true;
         }
@@ -456,7 +676,7 @@ export class SandboxScene extends Phaser.Scene {
         const tick = weapon.damage * (delta / (BEAM_RAMP + beam.hold));
         target.hull -= tick;
         beam.pixelPool += tick;
-        if (beam.pixelPool > 26) {
+        if (beam.pixelPool > 26 && target.damageCanvas) {
           this.applyPixelDamage(target, endX, endY, beam.pixelPool);
           beam.pixelPool = 0;
         }
@@ -464,40 +684,47 @@ export class SandboxScene extends Phaser.Scene {
           beam.lastSpark = time;
           this.burst(endX, endY, 4);
         }
-        if (target === this.player && time > (this.lastBeamHitSound ?? 0) + 700) {
+        if (target === this.con && time > (this.lastBeamHitSound ?? 0) + 700) {
           this.lastBeamHitSound = time;
           sfx('hit');
         }
-        if (target.hull <= 0 && !this.over) this.startDeath(target);
+        this.checkDeath(target);
       }
       return true;
     });
   }
 
-  // Turret hardpoints engage on their own when the target is inside their
-  // fitted weapon's range; each fires from its real mount position.
-  runTurrets(ship, target, group, time, delayMul = 1) {
-    if (!target.active || target.dying || ship.dying) return;
+  // Turret hardpoints engage on their own; anti-fighter mounts (flak, AAA
+  // beams) prefer strike craft and fall back to capitals, laser turrets
+  // prefer capitals and plink fighters when nothing bigger is in reach.
+  runTurrets(ship, foeSide, time, delayMul = 1) {
+    if (ship.dying) return;
+    const group = this.shots[ship.side];
+    const caps = this.fleets[foeSide];
+    const wings = this.strike[foeSide];
     ship.spec.hardpoints.forEach((point, i) => {
       const weapon = WEAPONS[point.fitted];
       if (weapon.type !== 'turret' || ship.mountDisabled[i] || time < ship.nextFire[i]) return;
       const pos = this.hardpointPos(ship, point);
-      const dist = Phaser.Math.Distance.Between(pos.x, pos.y, target.x, target.y);
-      if (dist > weapon.range) return;
+      const capT = this.nearestOf(pos.x, pos.y, caps, weapon.range);
+      const strikeT = this.nearestOf(pos.x, pos.y, wings, weapon.range);
+      const target = weapon.anti ? (strikeT ?? capT) : (capT ?? strikeT);
+      if (!target) return;
       ship.nextFire[i] = time + weapon.delay * delayMul + Math.random() * 500;
       if (weapon.beam) {
         this.fireBeam(ship, target, weapon, point, true);
         return;
       }
-      const aim = Phaser.Math.Angle.Between(pos.x, pos.y, target.x, target.y) + (Math.random() - 0.5) * 4 * DEG;
+      const aim = this.leadAngle(pos.x, pos.y, target, weapon.speed)
+        + (Math.random() - 0.5) * (target.isStrike ? 6 : 4) * DEG;
       this.fireShot(group, ship, pos.x, pos.y, aim, weapon);
     });
   }
 
-  // Spinal mounts fire together on the battery trigger, but only when the bow
-  // is actually laid on the target.
-  tryBattery(ship, target, group, time, delayMul = 1) {
-    if (!target.active || target.dying || ship.dying) return false;
+  // Spinal mounts fire together, but only when the bow is laid on the target.
+  tryBattery(ship, target, time, delayMul = 1) {
+    if (!target?.active || target.dying || ship.dying) return false;
+    const group = this.shots[ship.side];
     const aim = Phaser.Math.Angle.Between(ship.x, ship.y, target.x, target.y);
     if (Math.abs(Phaser.Math.Angle.Wrap(aim - ship.facing)) > BATTERY_ARC) return false;
     let fired = false;
@@ -518,29 +745,31 @@ export class SandboxScene extends Phaser.Scene {
     return fired;
   }
 
-  batteryReady(ship, time) {
-    return ship.spec.hardpoints.some((point, i) =>
-      WEAPONS[point.fitted].type === 'spinal' && !ship.mountDisabled[i] && time >= ship.nextFire[i]);
-  }
-
-  hit(shot, ship) {
+  onShotHit(a, b) {
+    const shot = a.isShot ? a : b;
+    const target = a.isShot ? b : a;
+    if (!shot.active || !target.active) return;
     const damage = shot.damage ?? 10;
     const { x, y, burstFx } = shot;
     shot.destroy();
     if (burstFx) this.flakBurst(x, y);
-    this.damageShip(ship, damage, x, y);
+    this.damageShip(target, damage, x, y);
   }
 
   damageShip(ship, damage, x, y) {
-    if (ship.dying) return;
+    if (ship.dying || !ship.active) return;
     ship.hull -= damage;
+    if (ship.isStrike) {
+      if (ship.hull <= 0) this.killStrike(ship);
+      return;
+    }
     this.applyPixelDamage(ship, x, y, damage);
     this.burst(x, y, 5);
-    if (ship === this.player) {
+    if (ship === this.con) {
       sfx('hit');
       if (damage >= 50) this.cameras.main.shake(150, 0.005);
     }
-    if (ship.hull <= 0 && !this.over) this.startDeath(ship);
+    this.checkDeath(ship);
   }
 
   // GSB-style staged death: secondary explosions walk the hull, then the
@@ -581,8 +810,16 @@ export class SandboxScene extends Phaser.Scene {
       this.cameras.main.shake(320, 0.01);
       sfx('bigBoom');
       ship.engine.destroy();
+      const side = ship.side;
       ship.destroy();
-      this.endMission(ship === this.enemy);
+      // Losing the conned ship hands the helm to the next hull in the line.
+      if (side === 'A' && !this.fleets.A.some((s, i) => i === this.conIdx && s.active)) {
+        const next = this.fleets.A.findIndex((s) => s.active && !s.dying);
+        if (next >= 0) this.setCon(next);
+      }
+      if (!this.fleets[side].some((s) => s.active)) {
+        this.endMission(side === 'B');
+      }
     });
   }
 
@@ -599,13 +836,13 @@ export class SandboxScene extends Phaser.Scene {
     this.over = true;
     if (won) sfx('win');
     this.banner.setText(won
-      ? 'HOSTILE DESTROYED\n\nTAP TO RETURN'
-      : 'SHIP LOST\n\nTAP TO RETURN');
+      ? 'HOSTILE FLEET DESTROYED\n\nTAP TO RETURN'
+      : 'FLEET LOST\n\nTAP TO RETURN');
   }
 
-  // Touch-first control suite: a helm pad, an energy board, camera gestures
-  // (one-finger pan, two-finger pinch), FOCUS re-centering, and an exit tap.
-  // All batteries fire automatically — there is no fire button.
+  // Touch-first control suite: a helm pad, an energy board, wing orders,
+  // fleet tabs, camera gestures (one-finger pan, two-finger pinch), FOCUS
+  // re-centering, and an exit tap. All batteries fire automatically.
   createControls() {
     this.input.addPointer(3);
 
@@ -632,18 +869,38 @@ export class SandboxScene extends Phaser.Scene {
       return t;
     };
     const button = (str, at, cb, opts = {}) => {
-      label(str, (w, h) => {
+      const t = label(str, (w, h) => {
         const r = at(w, h);
         return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
       }, opts);
       this.hitButtons.push({ at, cb });
+      return t;
     };
 
     button('✕', () => ({ x: 4, y: 4, w: 40, h: 36 }),
       () => this.scene.start('title'), { size: 18, color: '#8593a6' });
     button('⌖ FOCUS', (w, h) => ({ x: w - 104, y: h - PANEL_H - 44, w: 96, h: 34 }), () => {
-      this.cameras.main.startFollow(this.player, false, 0.06, 0.06);
+      this.cameras.main.startFollow(this.con, false, 0.06, 0.06);
       this.following = true;
+    });
+
+    // Fleet tabs: tap to take the con of another ship in your group.
+    this.fleetTabs = this.fleets.A.map((ship, i) => button('', (w, h) => this.tabRect(i, w, h),
+      () => { this.setCon(i); }, { size: 11 }));
+
+    // Wing orders (one standing order for the whole air group).
+    this.orderTexts = {};
+    ORDERS.forEach((order, i) => {
+      this.orderTexts[order] = button(order.toUpperCase(),
+        () => ({ x: 4 + i * 82, y: this.scale.height - PANEL_H - 44, w: 78, h: 34 }),
+        () => { this.wingOrder = order; }, { size: 11, color: '#8fb7d8' });
+      // Anchor uses live height via the at() closure; re-register for resize.
+      this.uiAnchors[this.uiAnchors.length - 1].anchor = (w, h) => ({
+        x: 4 + i * 82 + 39, y: h - PANEL_H - 44 + 17,
+      });
+      this.hitButtons[this.hitButtons.length - 1].at = (w, h) => ({
+        x: 4 + i * 82, y: h - PANEL_H - 44, w: 78, h: 34,
+      });
     });
 
     [['wpn', 'WPN', '#ff8866'], ['eng', 'ENG', '#6fb7ff'], ['rep', 'REP', '#7dd68f']]
@@ -717,6 +974,10 @@ export class SandboxScene extends Phaser.Scene {
     });
   }
 
+  tabRect(i, w) {
+    return { x: 52 + i * 128, y: 30, w: 122, h: 26 };
+  }
+
   updateSteer(p) {
     const dx = p.x - PAD.x, dy = p.y - (this.scale.height - 62);
     const len = Math.hypot(dx, dy);
@@ -756,6 +1017,24 @@ export class SandboxScene extends Phaser.Scene {
     g.fillStyle(0x11161f, 0.85).fillRect(w - 104, h - PANEL_H - 44, 96, 34);
     g.lineStyle(1, this.following ? 0x6fb7ff : 0x3a4a62, 1).strokeRect(w - 104, h - PANEL_H - 44, 96, 34);
 
+    // Fleet tabs (chrome; the tab text lives in fleetTabs).
+    this.fleets.A.forEach((ship, i) => {
+      const r = this.tabRect(i, w);
+      const conned = i === this.conIdx;
+      g.fillStyle(0x11161f, conned ? 0.9 : 0.6).fillRect(r.x, r.y, r.w, r.h);
+      g.lineStyle(1, conned ? 0xffb454 : ship.active ? 0x3a4a62 : 0x2b2b34, 1)
+        .strokeRect(r.x, r.y, r.w, r.h);
+    });
+
+    // Wing order buttons (only shown once any carrier is in the fleet).
+    if (this.anyHangar()) {
+      ORDERS.forEach((order, i) => {
+        const active = this.wingOrder === order;
+        g.fillStyle(0x11161f, active ? 0.9 : 0.6).fillRect(4 + i * 82, h - PANEL_H - 44, 78, 34);
+        g.lineStyle(1, active ? 0x9fd8ff : 0x3a4a62, 1).strokeRect(4 + i * 82, h - PANEL_H - 44, 78, 34);
+      });
+    }
+
     // Energy board rows: − [pips ×4] +
     const colors = [0xff8866, 0x6fb7ff, 0x7dd68f];
     ['wpn', 'eng', 'rep'].forEach((sys, r) => {
@@ -779,6 +1058,32 @@ export class SandboxScene extends Phaser.Scene {
     if (fill > 1) g.fillStyle(0x9fd8ff, 0.85).fillRect(bx + 2, by + bh - fill, 8, fill);
   }
 
+  anyHangar() {
+    return [...this.fleets.A, ...this.fleets.B].some((s) => s.spec.hangar);
+  }
+
+  // Un-conned friendlies hold formation on the conned ship: line abreast with
+  // a slight trail, matching the flag's heading once on station.
+  formationDrive(ship, slot, dt) {
+    const flag = this.con;
+    if (!flag?.active || flag === ship) return;
+    const side = slot % 2 === 1 ? 1 : -1;
+    const rank = Math.ceil(slot / 2);
+    const lateral = side * rank * (flag.displayWidth * 0.5 + ship.displayWidth * 0.5 + 220);
+    const back = rank * 90;
+    const cos = Math.cos(flag.facing), sin = Math.sin(flag.facing);
+    const tx = flag.x - cos * back - sin * lateral;
+    const ty = flag.y - sin * back + cos * lateral;
+    const dist = Phaser.Math.Distance.Between(ship.x, ship.y, tx, ty);
+    const want = dist > ship.displayWidth * 0.4
+      ? Phaser.Math.Angle.Between(ship.x, ship.y, tx, ty)
+      : flag.facing;
+    ship.facing = Phaser.Math.Angle.RotateTo(ship.facing, want, ship.spec.turn * DEG * dt);
+    ship.throttle = dist > 600 ? 1
+      : Math.min(1, Math.max(flag.throttle, dist / 600));
+    this.steerCapital(ship, dt);
+  }
+
   update(time, delta) {
     const dt = delta / 1000;
     const cam = this.cameras.main;
@@ -797,8 +1102,7 @@ export class SandboxScene extends Phaser.Scene {
     this.drawMinimap();
     this.drawPanel();
     this.updateBeams(delta, time);
-    this.updateEngine(this.player);
-    this.updateEngine(this.enemy);
+    for (const ship of [...this.fleets.A, ...this.fleets.B]) this.updateEngine(ship);
     this.fires = this.fires.filter((f) => {
       if (!f.ship.active) { f.emitter.destroy(); return false; }
       const pos = this.hardpointPos(f.ship, f.point);
@@ -807,59 +1111,91 @@ export class SandboxScene extends Phaser.Scene {
     });
     this.drawHullBars();
 
+    this.updateHangars(time);
+    this.updateStrike(dt, time);
+
     const e = this.energy;
     this.poolText.setText(`POWER  FREE ${e.pool - e.wpn - e.eng - e.rep}/${e.pool}`);
+    this.fleets.A.forEach((ship, i) => {
+      const pct = ship.active ? Math.max(0, Math.round((ship.hull / ship.spec.hull) * 100)) : 0;
+      const name = ship.spec.name.replace(/^\S+ /, '');
+      this.fleetTabs[i].setText(ship.active
+        ? `${i === this.conIdx ? '★' : i + 1} ${name} ${pct}%`
+        : `× ${name}`)
+        .setColor(ship.active ? (i === this.conIdx ? '#ffb454' : '#aab6c6') : '#5a6678');
+    });
 
-    if (!this.player.active || this.player.dying) return;
-    const spec = this.player.spec;
-
-    // Helm holds the last ordered heading; engine power scales speed and turn.
-    const engMul = ENG_MUL[e.eng];
-    this.player.speedMul = engMul;
-    if (this.helm.engaged) {
-      this.player.facing = Phaser.Math.Angle.RotateTo(
-        this.player.facing, this.helm.steer, spec.turn * DEG * dt * engMul);
-    }
-    this.player.throttle = this.helm.throttle;
-    this.steerCapital(this.player, dt);
-
-    // Repair crews patch the hull from the energy pool.
-    this.player.hull = Math.min(spec.hull, this.player.hull + REP_RATE[e.rep] * dt);
-
-    // The weapons officer runs every battery on their own: turrets and the
-    // main battery both engage automatically; weapon power sets the tempo.
-    const wpnMul = WPN_MUL[e.wpn];
-    this.runTurrets(this.player, this.enemy, this.playerShots, time, wpnMul);
-    if (!this.over) this.tryBattery(this.player, this.enemy, this.playerShots, time, wpnMul);
-
-    // Enemy captain: close to gun range, then hold a slow broadside orbit.
-    if (this.enemy.active && !this.enemy.dying && !this.over) {
-      const e = this.enemy;
-      const dist = Phaser.Math.Distance.Between(e.x, e.y, this.player.x, this.player.y);
-      const bearing = Phaser.Math.Angle.Between(e.x, e.y, this.player.x, this.player.y);
-      const want = dist > ENGAGE_RANGE * 0.85 ? bearing : bearing + 70 * DEG;
-      e.facing = Phaser.Math.Angle.RotateTo(e.facing, want, e.spec.turn * DEG * dt);
-      e.throttle = dist > ENGAGE_RANGE * 0.5 ? 1 : 0.45;
-      this.steerCapital(e, dt);
-      this.runTurrets(e, this.player, this.enemyShots, time);
-      this.tryBattery(e, this.player, this.enemyShots, time);
+    // Conned ship: helm + ETS. The rest of the fleet drives itself.
+    const con = this.con;
+    if (con?.active && !con.dying) {
+      const spec = con.spec;
+      const engMul = ENG_MUL[e.eng];
+      con.speedMul = engMul;
+      if (this.helm.engaged) {
+        con.facing = Phaser.Math.Angle.RotateTo(
+          con.facing, this.helm.steer, spec.turn * DEG * dt * engMul);
+      }
+      con.throttle = this.helm.throttle;
+      this.steerCapital(con, dt);
+      con.hull = Math.min(spec.hull, con.hull + REP_RATE[e.rep] * dt);
     }
 
-    // Battery readout counts down to the next ready spinal mount.
-    const spinalWaits = this.player.spec.hardpoints
-      .map((point, i) => ({ point, i }))
-      .filter(({ point, i }) => WEAPONS[point.fitted].type === 'spinal' && !this.player.mountDisabled[i])
-      .map(({ i }) => this.player.nextFire[i] - time);
-    const batteryReady = spinalWaits.length > 0 && Math.min(...spinalWaits) <= 0;
-    const batteryText = spinalWaits.length === 0 ? 'OFFLINE'
-      : batteryReady ? 'READY' : `${(Math.min(...spinalWaits) / 1000).toFixed(1)}s`;
-    const mountsUp = this.player.mountDisabled.filter((d) => !d).length;
-    this.hud.setText(
-      `${spec.name.toUpperCase()}  HULL ${Math.max(0, Math.round(this.player.hull))}/${spec.hull}   ` +
-      `MOUNTS ${mountsUp}/${spec.hardpoints.length}   ` +
-      `THROTTLE ${Math.round(this.player.throttle * 100)}%   ` +
-      `BATTERY ${batteryText}   ` +
-      `HOSTILE ${this.enemy.active ? Math.max(0, Math.round(this.enemy.hull)) : 0}/${SHIPS[this.enemyKey].hull}`,
-    );
+    // Every capital fights on its own: turrets pick targets per mount, the
+    // main battery volleys when the bow bears. The conned ship's tempo runs
+    // on its energy board; everyone else runs balanced.
+    let slot = 0;
+    this.fleets.A.forEach((ship, i) => {
+      if (!ship.active || ship.dying) return;
+      const isCon = i === this.conIdx;
+      if (!isCon) {
+        slot += 1;
+        ship.speedMul = 1;
+        this.formationDrive(ship, slot, dt);
+      }
+      const delayMul = isCon ? WPN_MUL[e.wpn] : 1;
+      this.runTurrets(ship, 'B', time, delayMul);
+      if (!this.over) {
+        this.tryBattery(ship, this.nearestOf(ship.x, ship.y, this.fleets.B), time, delayMul);
+      }
+    });
+
+    // Enemy captains: close to gun range, then hold a slow broadside orbit.
+    for (const ship of this.fleets.B) {
+      if (!ship.active || ship.dying || this.over) continue;
+      const target = this.nearestOf(ship.x, ship.y, this.fleets.A);
+      if (target) {
+        const dist = Phaser.Math.Distance.Between(ship.x, ship.y, target.x, target.y);
+        const bearing = Phaser.Math.Angle.Between(ship.x, ship.y, target.x, target.y);
+        const want = dist > ENGAGE_RANGE * 0.85 ? bearing : bearing + 70 * DEG;
+        ship.facing = Phaser.Math.Angle.RotateTo(ship.facing, want, ship.spec.turn * DEG * dt);
+        ship.throttle = dist > ENGAGE_RANGE * 0.5 ? 1 : 0.45;
+      } else {
+        ship.throttle = 0.3;
+      }
+      this.steerCapital(ship, dt);
+      this.runTurrets(ship, 'A', time);
+      this.tryBattery(ship, target, time);
+    }
+
+    // HUD: the conned ship's board plus fleet/air-group state.
+    if (con?.active) {
+      const spec = con.spec;
+      const spinalWaits = spec.hardpoints
+        .map((point, i) => ({ point, i }))
+        .filter(({ point, i }) => WEAPONS[point.fitted].type === 'spinal' && !con.mountDisabled[i])
+        .map(({ i }) => con.nextFire[i] - time);
+      const batteryText = spinalWaits.length === 0 ? 'OFFLINE'
+        : Math.min(...spinalWaits) <= 0 ? 'READY' : `${(Math.min(...spinalWaits) / 1000).toFixed(1)}s`;
+      const mountsUp = con.mountDisabled.filter((d) => !d).length;
+      const hangarLeft = this.fleets.A.reduce((n, s) => n + (s.active ? (s.hangarQueue?.length ?? 0) : 0), 0);
+      const wings = this.anyHangar()
+        ? `   WINGS ${this.strike.A.length} UP · ${hangarLeft} HELD   ORDER ${this.wingOrder.toUpperCase()}`
+        : '';
+      this.hud.setText(
+        `${spec.name.toUpperCase()}  HULL ${Math.max(0, Math.round(con.hull))}/${spec.hull}   ` +
+        `MOUNTS ${mountsUp}/${spec.hardpoints.length}   BATTERY ${batteryText}${wings}   ` +
+        `HOSTILES ${this.fleets.B.filter((s) => s.active).length} SHIPS · ${this.strike.B.length} CRAFT`,
+      );
+    }
   }
 }

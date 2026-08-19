@@ -21,10 +21,16 @@ There is no test suite or linter yet.
 - The player commands **capital ships** (FS2-inspired pacing): throttle-based helm,
   slow turns, auto-engaging turrets, bow-aligned main battery. Progression plan:
   small capitals → larger hulls → multi-ship fleets.
-- Scenes: `TitleScene` (menu, preloads all assets) → `SelectScene` (pick command +
-  opposition) → `SandboxScene` (capital duel), plus `WikiScene` (ship registry) and
-  `RefitScene` (wireframe hardpoint refitting; per-browser persistence via
-  `src/refit.js`, which mutates the SHIPS catalog in place).
+- Scenes: `TitleScene` (menu, preloads all assets) → `SelectScene` (fleet setup:
+  up to 3 capitals per side) → `SandboxScene` (fleet battle), plus `WikiScene`
+  (ship registry) and `RefitScene` (wireframe hardpoint refitting; per-browser
+  persistence via `src/refit.js`, which mutates the SHIPS catalog in place).
+- Fleets: the player cons one capital at a time (fleet tabs switch the con);
+  un-conned friendlies hold formation and fight on their own. Carriers launch
+  their `hangar` complement (STRIKECRAFT wings of 4) on a cadence; strike craft
+  are fully independent and follow one standing wing order
+  (ENGAGE / STRIKE / SCREEN). Anti-fighter mounts (`anti: true` — flak, AAAf,
+  SAAA) prefer strike-craft targets.
 - `SandboxScene` is touch-first (iOS target): no keyboard bindings. The interface
   renders on a second camera parked at `UIX` (far outside the world) so pinch
   zoom never scales it — UI objects live at `x = UIX + screenX` and are anchored
@@ -35,7 +41,8 @@ There is no test suite or linter yet.
 - `assets/derived/` holds faction recolors (gold-shift Vasudan, red-shift Shivan)
   baked by `scripts/recolor-factions.mjs` — re-run it after changing ship casts.
 - `src/ships.js` is the ship catalog: stats, wiki copy, sprite reference, and
-  **hardpoints** per hull. Add ships here, not in scenes. Hardpoints are mounts
+  **hardpoints** per hull, plus the `STRIKECRAFT` table (fighters/bombers) and
+  per-carrier `hangar` complements (FS2-flavored). Add ships here, not in scenes. Hardpoints are mounts
   ({type, fitted, x, y} — hull-fraction coords, +y toward bow) with a fitted
   weapon from the `WEAPONS` table; combat fires from these positions and the
   wiki draws them as markers. Planned direction: a wireframe refit screen where

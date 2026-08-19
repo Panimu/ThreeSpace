@@ -5,7 +5,7 @@
 // To use your own art, drop files into assets/local/ (gitignored) and point an
 // entry's url at 'local/whatever.png'.
 
-import { SHIPS, displayLength } from './ships.js';
+import { SHIPS, STRIKECRAFT, displayLength, strikeDisplayLength } from './ships.js';
 
 // In single-file builds, assets are embedded on window.__ASSETS__ by path.
 export function resolveUrl(path) {
@@ -23,6 +23,14 @@ for (const [key, ship] of Object.entries(SHIPS)) {
     targetLength: displayLength(ship.length),
   };
 }
+// Strike craft (fighters/bombers) all face right on the sheet — no flip.
+for (const [key, craft] of Object.entries(STRIKECRAFT)) {
+  IMAGES[`ship_${key}`] = {
+    url: craft.url,
+    angleOffset: 0,
+    targetLength: strikeDisplayLength(craft.length),
+  };
+}
 
 // Effect art sliced from the ordnance sheet (assets/fx/): beam bodies, bolt
 // cores, and the flak burst. Referenced from WEAPONS via bolt/beamTex keys.
@@ -31,6 +39,7 @@ const FX = [
   'beam_bgreen', 'beam_bfgreen', 'beam_lterslash', 'beam_aaa',
   'beam_svas', 'beam_bvas', 'beam_superlaser',
   'bolt_subach', 'bolt_terranhuge', 'bolt_vasudan', 'bolt_shivan',
+  'bolt_mekhu', 'bolt_shivanlight', 'bolt_shivanheavy',
   'flak_burst',
 ];
 for (const name of FX) IMAGES[`fx_${name}`] = { url: `fx/${name}.png`, angleOffset: 0 };
