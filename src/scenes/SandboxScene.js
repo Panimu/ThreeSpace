@@ -9,7 +9,7 @@ import {
 // FS2 beam envelope: the muzzle charges visibly, then the beam erupts and
 // burns — a slow, devastating event, not a shot. Anti-fighter and slash
 // beams override charge/hold per weapon (see WEAPONS).
-const BEAM_CHARGE = 650;
+const BEAM_CHARGE = 2200;
 const BEAM_RAMP = 140;
 const BEAM_HOLD = 2600;
 const BEAM_FADE = 300;
@@ -678,12 +678,17 @@ export class SandboxScene extends Phaser.Scene {
       }
       beam.lastDir = dir;
 
-      // Charge phase: the muzzle glow swells before the beam erupts.
+      // Charge phase: the emitter glows and swells before the beam erupts —
+      // a layered, pulsing warm-up like the FS2 originals. The tinted outer
+      // bloom (impact orb, unused until the burn) wraps a white core.
       if (beam.elapsed < beam.charge) {
         const charge = beam.elapsed / beam.charge;
-        const size = (30 + 80 * charge) * (0.9 + Math.random() * 0.2);
+        const pulse = 0.85 + 0.15 * Math.sin(beam.elapsed / 45) + Math.random() * 0.1;
+        const size = (26 + 100 * charge) * pulse;
+        beam.impact.setVisible(true).setPosition(pos.x, pos.y)
+          .setDisplaySize(size * 2.2, size * 2.2).setAlpha(0.2 + 0.5 * charge);
         beam.muzzle.setVisible(true).setPosition(pos.x, pos.y)
-          .setDisplaySize(size, size).setAlpha(0.5 + 0.5 * charge);
+          .setDisplaySize(size, size).setAlpha(0.35 + 0.65 * charge);
         return true;
       }
 

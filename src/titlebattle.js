@@ -91,11 +91,13 @@ export class TitleBattle {
       const beam = {
         ship, target, weapon, point,
         elapsed: 0,
-        charge: weapon.chargeMs ?? 650,
+        charge: weapon.chargeMs ?? 2200,
         hold: weapon.holdMs ?? 2200,
         hit: Math.random() < 0.8,
         off: { x: 0, y: 0 },
         img: null,
+        glow: this.scene.add.image(pos.x, pos.y, 'glow-orb')
+          .setBlendMode(Phaser.BlendModes.ADD).setTint(beamPalette(ship.spec).mid),
         muzzle: this.scene.add.image(pos.x, pos.y, 'glow-orb')
           .setBlendMode(Phaser.BlendModes.ADD).setTint(0xffffff),
       };
@@ -106,6 +108,7 @@ export class TitleBattle {
         const missBy = size * (0.55 + Math.random() * 0.3);
         beam.off = { x: Math.cos(across) * missBy * sign, y: Math.sin(across) * missBy * sign };
       }
+      this.root.add(beam.glow);
       this.root.add(beam.muzzle);
       this.beams.push(beam);
       return;
@@ -223,16 +226,23 @@ export class TitleBattle {
       const done = beam.elapsed > beam.charge + beam.hold + 250;
       if (done || !ship.img.active) {
         beam.img?.destroy();
+        beam.glow.destroy();
         beam.muzzle.destroy();
         return false;
       }
       const pos = this.hardpointPos(ship, beam.point);
       beam.muzzle.setPosition(pos.x, pos.y);
+      beam.glow.setPosition(pos.x, pos.y);
       if (beam.elapsed < beam.charge) {
+        // Warm-up: a pulsing tinted bloom around a swelling white core.
         const c = beam.elapsed / beam.charge;
-        beam.muzzle.setDisplaySize(20 + 60 * c, 20 + 60 * c).setAlpha(0.4 + 0.6 * c);
+        const pulse = 0.85 + 0.15 * Math.sin(beam.elapsed / 45) + Math.random() * 0.1;
+        const size = (18 + 70 * c) * pulse;
+        beam.glow.setDisplaySize(size * 2.2, size * 2.2).setAlpha(0.2 + 0.5 * c);
+        beam.muzzle.setDisplaySize(size, size).setAlpha(0.35 + 0.65 * c);
         return true;
       }
+      beam.glow.setAlpha(0);
       const burnT = (beam.elapsed - beam.charge) / beam.hold;
       const power = burnT > 1 ? Math.max(0, 1 - (beam.elapsed - beam.charge - beam.hold) / 250)
         : 0.86 + Math.random() * 0.14;
@@ -285,9 +295,11 @@ export class TitleBattle {
       y2 = Math.max(y2, s.img.y + s.size * 0.7);
     }
     const sw = this.scene.scale.width, sh = this.scene.scale.height;
+    // "Just on screen": fill most of the frame, zooming right in when the
+    // duelists close and back out as they spread.
     const target = Phaser.Math.Clamp(
-      Math.min((sw * 0.88) / Math.max(300, x2 - x1), (sh * 0.72) / Math.max(300, y2 - y1)),
-      0.1, 0.65);
+      Math.min((sw * 0.94) / Math.max(200, x2 - x1), (sh * 0.82) / Math.max(200, y2 - y1)),
+      0.08, 1.15);
     const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
     const v = this.view;
     if (!v.init) { v.init = true; v.scale = target; v.x = mx; v.y = my; }
