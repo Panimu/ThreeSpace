@@ -25,8 +25,13 @@ There is no test suite or linter yet.
   opposition) → `SandboxScene` (capital duel), plus `WikiScene` (ship registry) and
   `RefitScene` (wireframe hardpoint refitting; per-browser persistence via
   `src/refit.js`, which mutates the SHIPS catalog in place).
-- `SandboxScene` zooms out for big matchups; scrollFactor-0 UI must be placed via
-  `toUI()` and scaled by `1/zoomFactor` or camera zoom shrinks it.
+- `SandboxScene` is touch-first (iOS target): no keyboard bindings. The interface
+  renders on a second camera parked at `UIX` (far outside the world) so pinch
+  zoom never scales it — UI objects live at `x = UIX + screenX` and are anchored
+  via `uiPlace()`. Gestures: helm pad steers, one finger pans, two fingers pinch
+  (main camera zoom), FOCUS re-follows the player. Batteries fire automatically;
+  an Energy Transfer System (WPN/ENG/REP pips from a shared pool) sets weapon
+  tempo, speed/turn, and hull repair for the player only.
 - `assets/derived/` holds faction recolors (gold-shift Vasudan, red-shift Shivan)
   baked by `scripts/recolor-factions.mjs` — re-run it after changing ship casts.
 - `src/ships.js` is the ship catalog: stats, wiki copy, sprite reference, and

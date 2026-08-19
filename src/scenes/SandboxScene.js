@@ -19,7 +19,22 @@ const WORLD_H = 4000;
 const DEG = Math.PI / 180;
 const BATTERY_ARC = 14 * DEG;
 const ENGAGE_RANGE = 1000; // enemy AI's preferred gun range
-const MM_W = 190; // minimap width; height follows world aspect
+const MM_W = 170; // minimap width; height follows world aspect
+
+// UI lives on a second camera parked far outside the world so neither camera
+// ever renders the other's objects — pinch-zooming the battle never touches
+// the interface. All UI object x-coords are UIX + screenX.
+const UIX = -20000;
+const PANEL_H = 118;
+const PAD = { x: 86, r: 54 }; // steering pad center-x / radius (y = h - 62)
+const ZOOM_MIN = 0.15;
+const ZOOM_MAX = 1.5;
+
+// Energy Transfer System: a limited pool split across ship systems.
+// Index = pips allocated (0..4).
+const WPN_MUL = [1.7, 1.3, 1.0, 0.8, 0.65];  // weapon cooldown multiplier
+const ENG_MUL = [0.55, 0.8, 1.0, 1.15, 1.3]; // speed & turn multiplier
+const REP_RATE = [0, 1.2, 2.5, 4.5, 7];      // hull repaired per second
 
 export class SandboxScene extends Phaser.Scene {
   constructor() {
@@ -53,43 +68,47 @@ export class SandboxScene extends Phaser.Scene {
     const biggest = Math.max(
       this.player.displayWidth, this.player.displayHeight,
       this.enemy.displayWidth, this.enemy.displayHeight);
-    this.zoomFactor = Phaser.Math.Clamp(240 / biggest, 0.22, 0.9);
     this.cameras.main.setBounds(0, 0, WORLD_W, WORLD_H)
       .startFollow(this.player, false, 0.06, 0.06)
-      .setZoom(this.zoomFactor);
-    // The scrollFactor-0 backdrops shrink with zoom; oversize to compensate.
-    const fitBg = () => {
-      const origin = this.toUI(0, 0);
-      for (const layer of [this.bg, this.bgNebula]) {
-        layer.setPosition(origin.x, origin.y)
-          .setSize(this.scale.width / this.zoomFactor, this.scale.height / this.zoomFactor);
-      }
-    };
-    fitBg();
-    this.scale.on('resize', fitBg);
+      .setZoom(Phaser.Math.Clamp(240 / biggest, ZOOM_MIN, 0.9));
+    this.following = true;
+
+    // The interface renders on its own camera parked over UIX, so pinch-zooming
+    // the battle camera never scales it.
+    this.uiCam = this.cameras.add(0, 0, this.scale.width, this.scale.height);
+    this.uiCam.setScroll(UIX, 0);
+    this.uiCam.ignore([this.bg, this.bgNebula]);
+    this.uiAnchors = [];
+    this.hitButtons = [];
+
     this.hullBars = this.add.graphics().setDepth(8);
 
-    this.keys = this.input.keyboard.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,SPACE,R,ESC');
-    this.input.keyboard.on('keydown-ESC', () => this.scene.start('title'));
-
-    this.touch = { active: false, steer: 0, throttle: 0, fire: false };
-    if (this.sys.game.device.input.touch) this.createTouchControls();
+    // Energy Transfer System: the player splits a fixed pool between weapons,
+    // engines and repair. The enemy captain runs a balanced board (all ×1).
+    this.energy = { wpn: 2, eng: 2, rep: 2, pool: 8 };
+    // Helm orders persist after the finger lifts — capitals keep way on.
+    this.helm = { steer: this.player.facing, throttle: 0, engaged: false };
 
     this.createMinimap();
-    const uiPos = this.toUI(12, 10);
-    this.hud = this.add.text(uiPos.x, uiPos.y, '', { fontFamily: 'monospace', fontSize: 15, color: '#9fd8ff' })
-      .setScrollFactor(0).setDepth(10).setScale(1 / this.zoomFactor);
-    this.banner = this.add.text(this.scale.width / 2, this.scale.height / 2, '', {
-      fontFamily: 'monospace', fontSize: 32, color: '#ffffff', align: 'center',
-    }).setOrigin(0.5).setScrollFactor(0).setDepth(10).setScale(1 / this.zoomFactor);
+    this.createControls();
     this.over = false;
+
+    const onResize = (s) => {
+      this.uiCam.setSize(s.width, s.height);
+      for (const { obj, anchor } of this.uiAnchors) {
+        const pos = anchor(s.width, s.height);
+        obj.setPosition(UIX + pos.x, pos.y);
+      }
+    };
+    this.scale.on('resize', onResize);
+    this.events.once('shutdown', () => this.scale.off('resize', onResize));
   }
 
-  // Camera zoom also scales scrollFactor-0 objects; this maps a desired
-  // on-screen position to the coordinate that renders there at current zoom.
-  toUI(sx, sy) {
-    const w = this.scale.width / 2, h = this.scale.height / 2;
-    return { x: (sx - w) / this.zoomFactor + w, y: (sy - h) / this.zoomFactor + h };
+  // Registers a UI object at a screen-anchored position (re-applied on resize).
+  uiPlace(obj, anchor) {
+    this.uiAnchors.push({ obj, anchor });
+    const pos = anchor(this.scale.width, this.scale.height);
+    obj.setPosition(UIX + pos.x, pos.y);
   }
 
   drawHullBars() {
@@ -109,14 +128,8 @@ export class SandboxScene extends Phaser.Scene {
 
   createMinimap() {
     this.mmH = Math.round(MM_W * (WORLD_H / WORLD_W));
-    this.minimap = this.add.graphics().setScrollFactor(0).setDepth(15)
-      .setScale(1 / this.zoomFactor);
-    const place = () => {
-      const pos = this.toUI(this.scale.width - MM_W - 14, 14);
-      this.minimap.setPosition(pos.x, pos.y);
-    };
-    place();
-    this.scale.on('resize', place);
+    this.minimap = this.add.graphics().setDepth(15);
+    this.uiPlace(this.minimap, (w) => ({ x: w - MM_W - 14, y: 14 }));
   }
 
   drawMinimap() {
@@ -283,8 +296,9 @@ export class SandboxScene extends Phaser.Scene {
   // Heavy helm: velocity eases toward facing * maxSpeed * throttle.
   steerCapital(ship, dt) {
     const spec = ship.spec;
-    const targetVx = Math.cos(ship.facing) * spec.speed * ship.throttle;
-    const targetVy = Math.sin(ship.facing) * spec.speed * ship.throttle;
+    const speed = spec.speed * (ship.speedMul ?? 1);
+    const targetVx = Math.cos(ship.facing) * speed * ship.throttle;
+    const targetVy = Math.sin(ship.facing) * speed * ship.throttle;
     const ease = Math.min(1, (spec.accel / spec.speed) * dt);
     ship.setVelocity(
       ship.body.velocity.x + (targetVx - ship.body.velocity.x) * ease,
@@ -462,7 +476,7 @@ export class SandboxScene extends Phaser.Scene {
 
   // Turret hardpoints engage on their own when the target is inside their
   // fitted weapon's range; each fires from its real mount position.
-  runTurrets(ship, target, group, time) {
+  runTurrets(ship, target, group, time, delayMul = 1) {
     if (!target.active || target.dying || ship.dying) return;
     ship.spec.hardpoints.forEach((point, i) => {
       const weapon = WEAPONS[point.fitted];
@@ -470,7 +484,7 @@ export class SandboxScene extends Phaser.Scene {
       const pos = this.hardpointPos(ship, point);
       const dist = Phaser.Math.Distance.Between(pos.x, pos.y, target.x, target.y);
       if (dist > weapon.range) return;
-      ship.nextFire[i] = time + weapon.delay + Math.random() * 500;
+      ship.nextFire[i] = time + weapon.delay * delayMul + Math.random() * 500;
       if (weapon.beam) {
         this.fireBeam(ship, target, weapon, point, true);
         return;
@@ -482,7 +496,7 @@ export class SandboxScene extends Phaser.Scene {
 
   // Spinal mounts fire together on the battery trigger, but only when the bow
   // is actually laid on the target.
-  tryBattery(ship, target, group, time) {
+  tryBattery(ship, target, group, time, delayMul = 1) {
     if (!target.active || target.dying || ship.dying) return false;
     const aim = Phaser.Math.Angle.Between(ship.x, ship.y, target.x, target.y);
     if (Math.abs(Phaser.Math.Angle.Wrap(aim - ship.facing)) > BATTERY_ARC) return false;
@@ -492,7 +506,7 @@ export class SandboxScene extends Phaser.Scene {
       if (weapon.type !== 'spinal' || ship.mountDisabled[i] || time < ship.nextFire[i]) return;
       const pos = this.hardpointPos(ship, point);
       if (Phaser.Math.Distance.Between(pos.x, pos.y, target.x, target.y) > weapon.range) return;
-      ship.nextFire[i] = time + weapon.delay;
+      ship.nextFire[i] = time + weapon.delay * delayMul;
       if (weapon.beam) {
         this.fireBeam(ship, target, weapon, point);
       } else {
@@ -585,77 +599,203 @@ export class SandboxScene extends Phaser.Scene {
     this.over = true;
     if (won) sfx('win');
     this.banner.setText(won
-      ? 'HOSTILE DESTROYED\n\n[R] again   [ESC] title'
-      : 'SHIP LOST\n\n[R] again   [ESC] title');
+      ? 'HOSTILE DESTROYED\n\nTAP TO RETURN'
+      : 'SHIP LOST\n\nTAP TO RETURN');
   }
 
-  createTouchControls() {
-    this.input.addPointer(2);
-    const STICK_R = 70;
-    this.stickBase = this.add.circle(0, 0, STICK_R, 0xffffff, 0.08)
-      .setStrokeStyle(2, 0x9fd8ff, 0.3).setScrollFactor(0).setDepth(20).setVisible(false);
-    this.stickNub = this.add.circle(0, 0, 30, 0x9fd8ff, 0.3).setScrollFactor(0).setDepth(20).setVisible(false);
-    this.stickPointerId = null;
+  // Touch-first control suite: a helm pad, an energy board, camera gestures
+  // (one-finger pan, two-finger pinch), FOCUS re-centering, and an exit tap.
+  // All batteries fire automatically — there is no fire button.
+  createControls() {
+    this.input.addPointer(3);
 
-    this.stickBase.setScale(1 / this.zoomFactor);
-    this.stickNub.setScale(1 / this.zoomFactor);
+    this.hud = this.add.text(0, 0, '', {
+      fontFamily: 'monospace', fontSize: 13, color: '#9fd8ff',
+    }).setDepth(21);
+    this.uiPlace(this.hud, () => ({ x: 52, y: 12 }));
+
+    this.banner = this.add.text(0, 0, '', {
+      fontFamily: 'monospace', fontSize: 30, color: '#ffffff', align: 'center',
+    }).setOrigin(0.5).setDepth(30);
+    this.uiPlace(this.banner, (w, h) => ({ x: w / 2, y: h / 2 - 40 }));
+
+    // Panel chrome (backdrop, pad, pips, gauges) is redrawn every frame by
+    // drawPanel(); static labels and tap targets are registered here.
+    this.panelG = this.add.graphics().setDepth(20);
+    this.uiPlace(this.panelG, () => ({ x: 0, y: 0 }));
+
+    const label = (str, anchor, opts = {}) => {
+      const t = this.add.text(0, 0, str, {
+        fontFamily: 'monospace', fontSize: opts.size ?? 13, color: opts.color ?? '#9fd8ff',
+      }).setOrigin(opts.ox ?? 0.5, 0.5).setDepth(22);
+      this.uiPlace(t, anchor);
+      return t;
+    };
+    const button = (str, at, cb, opts = {}) => {
+      label(str, (w, h) => {
+        const r = at(w, h);
+        return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+      }, opts);
+      this.hitButtons.push({ at, cb });
+    };
+
+    button('✕', () => ({ x: 4, y: 4, w: 40, h: 36 }),
+      () => this.scene.start('title'), { size: 18, color: '#8593a6' });
+    button('⌖ FOCUS', (w, h) => ({ x: w - 104, y: h - PANEL_H - 44, w: 96, h: 34 }), () => {
+      this.cameras.main.startFollow(this.player, false, 0.06, 0.06);
+      this.following = true;
+    });
+
+    [['wpn', 'WPN', '#ff8866'], ['eng', 'ENG', '#6fb7ff'], ['rep', 'REP', '#7dd68f']]
+      .forEach(([sys, name, color], r) => {
+        const rowY = (h) => h - 92 + r * 30;
+        label(name, (w, h) => ({ x: 150, y: rowY(h) }), { ox: 0, color });
+        button('−', (w, h) => ({ x: 183, y: rowY(h) - 13, w: 26, h: 26 }), () => this.adjustEnergy(sys, -1));
+        button('+', (w, h) => ({ x: 293, y: rowY(h) - 13, w: 26, h: 26 }), () => this.adjustEnergy(sys, 1));
+      });
+    this.poolText = label('', (w, h) => ({ x: 150, y: h - 112 }), { ox: 0, size: 11, color: '#8593a6' });
+
+    // Pointer routing: the pad steers, one free finger pans, two pinch.
+    this.steerId = null;
+    this.panPointers = new Map();
+    this.pinch = null;
+
     this.input.on('pointerdown', (p) => {
-      if (p.x < this.scale.width * 0.5 && this.stickPointerId === null) {
-        this.stickPointerId = p.id;
-        this.stickScreen = { x: p.x, y: p.y };
-        const pos = this.toUI(p.x, p.y);
-        this.stickBase.setPosition(pos.x, pos.y).setVisible(true);
-        this.stickNub.setPosition(pos.x, pos.y).setVisible(true);
-        this.touch.active = true;
+      if (this.over) { this.scene.start('title'); return; }
+      const w = this.scale.width, h = this.scale.height;
+      for (const b of this.hitButtons) {
+        const r = b.at(w, h);
+        if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { b.cb(); return; }
+      }
+      if (this.steerId === null && Math.hypot(p.x - PAD.x, p.y - (h - 62)) < PAD.r + 18) {
+        this.steerId = p.id;
+        this.updateSteer(p);
+        return;
+      }
+      // The panel strip and minimap are dead zones for camera gestures.
+      if (p.y > h - PANEL_H) return;
+      if (p.x > w - MM_W - 28 && p.y < this.mmH + 28) return;
+      this.panPointers.set(p.id, { x: p.x, y: p.y });
+      if (this.panPointers.size === 2) {
+        const [a, b] = [...this.panPointers.values()];
+        this.pinch = { d0: Math.max(20, Math.hypot(a.x - b.x, a.y - b.y)), z0: this.cameras.main.zoom };
       }
     });
+
     this.input.on('pointermove', (p) => {
-      if (p.id !== this.stickPointerId) return;
-      const dx = p.x - this.stickScreen.x, dy = p.y - this.stickScreen.y;
-      const len = Math.hypot(dx, dy), clamped = Math.min(len, STICK_R);
-      this.touch.steer = Math.atan2(dy, dx);
-      this.touch.throttle = clamped / STICK_R;
-      const nub = this.toUI(
-        this.stickScreen.x + (len ? (dx / len) * clamped : 0),
-        this.stickScreen.y + (len ? (dy / len) * clamped : 0),
-      );
-      this.stickNub.setPosition(nub.x, nub.y);
+      if (p.id === this.steerId) { this.updateSteer(p); return; }
+      const entry = this.panPointers.get(p.id);
+      if (!entry) return;
+      const cam = this.cameras.main;
+      if (this.pinch && this.panPointers.size >= 2) {
+        entry.x = p.x;
+        entry.y = p.y;
+        const [a, b] = [...this.panPointers.values()];
+        const d = Math.hypot(a.x - b.x, a.y - b.y);
+        cam.setZoom(Phaser.Math.Clamp(this.pinch.z0 * (d / this.pinch.d0), ZOOM_MIN, ZOOM_MAX));
+      } else {
+        const dx = p.x - entry.x, dy = p.y - entry.y;
+        entry.x = p.x;
+        entry.y = p.y;
+        if (this.following) { cam.stopFollow(); this.following = false; }
+        cam.setScroll(cam.scrollX - dx / cam.zoom, cam.scrollY - dy / cam.zoom);
+      }
     });
+
     const release = (p) => {
-      if (p.id !== this.stickPointerId) return;
-      this.stickPointerId = null;
-      this.touch.active = false; // throttle holds where it was — capital ships keep way on
-      this.stickBase.setVisible(false);
-      this.stickNub.setVisible(false);
+      if (p.id === this.steerId) this.steerId = null; // helm holds the last order
+      this.panPointers.delete(p.id);
+      if (this.panPointers.size < 2) this.pinch = null;
     };
     this.input.on('pointerup', release);
     this.input.on('pointerupoutside', release);
 
-    const btn = this.add.circle(0, 0, 46, 0xff5555, 0.22)
-      .setStrokeStyle(2, 0xff5555, 0.5).setScrollFactor(0).setDepth(20).setInteractive();
-    const label = this.add.text(0, 0, 'FIRE', { fontFamily: 'monospace', fontSize: 15, color: '#fff' })
-      .setOrigin(0.5).setScrollFactor(0).setDepth(21);
-    btn.on('pointerdown', () => { this.touch.fire = true; if (this.over) this.scene.restart(); });
-    btn.on('pointerup', () => { this.touch.fire = false; });
-    btn.on('pointerout', () => { this.touch.fire = false; });
-    btn.setScale(1 / this.zoomFactor);
-    label.setScale(1 / this.zoomFactor);
-    const place = () => {
-      const pos = this.toUI(this.scale.width - 80, this.scale.height - 100);
-      btn.setPosition(pos.x, pos.y);
-      label.setPosition(btn.x, btn.y);
-    };
-    place();
-    this.scale.on('resize', place);
+    // Desktop convenience: the wheel zooms too.
+    this.input.on('wheel', (_p, _objs, _dx, dy) => {
+      const cam = this.cameras.main;
+      cam.setZoom(Phaser.Math.Clamp(cam.zoom * (dy > 0 ? 0.9 : 1.111), ZOOM_MIN, ZOOM_MAX));
+    });
+  }
+
+  updateSteer(p) {
+    const dx = p.x - PAD.x, dy = p.y - (this.scale.height - 62);
+    const len = Math.hypot(dx, dy);
+    if (len < 6) return;
+    this.helm.engaged = true;
+    this.helm.steer = Math.atan2(dy, dx);
+    this.helm.throttle = Phaser.Math.Clamp(len / PAD.r, 0, 1);
+  }
+
+  adjustEnergy(sys, delta) {
+    const e = this.energy;
+    const used = e.wpn + e.eng + e.rep;
+    if (delta > 0 && (e[sys] >= 4 || used >= e.pool)) return;
+    if (delta < 0 && e[sys] <= 0) return;
+    e[sys] += delta;
+  }
+
+  drawPanel() {
+    const g = this.panelG;
+    const w = this.scale.width, h = this.scale.height;
+    const e = this.energy;
+    g.clear();
+    g.fillStyle(0x0a0d14, 0.78).fillRect(0, h - PANEL_H, w, PANEL_H);
+    g.lineStyle(1, 0x2b3a52, 1).lineBetween(0, h - PANEL_H, w, h - PANEL_H);
+
+    // Helm pad: the nub shows the standing steering order.
+    const cy = h - 62;
+    g.fillStyle(0xffffff, 0.05).fillCircle(PAD.x, cy, PAD.r);
+    g.lineStyle(2, 0x9fd8ff, 0.35).strokeCircle(PAD.x, cy, PAD.r);
+    const nx = this.helm.engaged ? PAD.x + Math.cos(this.helm.steer) * PAD.r * this.helm.throttle : PAD.x;
+    const ny = this.helm.engaged ? cy + Math.sin(this.helm.steer) * PAD.r * this.helm.throttle : cy;
+    g.fillStyle(0x9fd8ff, this.steerId !== null ? 0.55 : 0.3).fillCircle(nx, ny, 13);
+
+    // Exit and FOCUS button chrome.
+    g.fillStyle(0x11161f, 0.7).fillRect(4, 4, 40, 36);
+    g.lineStyle(1, 0x2b3a52, 1).strokeRect(4, 4, 40, 36);
+    g.fillStyle(0x11161f, 0.85).fillRect(w - 104, h - PANEL_H - 44, 96, 34);
+    g.lineStyle(1, this.following ? 0x6fb7ff : 0x3a4a62, 1).strokeRect(w - 104, h - PANEL_H - 44, 96, 34);
+
+    // Energy board rows: − [pips ×4] +
+    const colors = [0xff8866, 0x6fb7ff, 0x7dd68f];
+    ['wpn', 'eng', 'rep'].forEach((sys, r) => {
+      const y = h - 92 + r * 30;
+      for (const bx of [183, 293]) {
+        g.fillStyle(0x11161f, 0.8).fillRect(bx, y - 13, 26, 26);
+        g.lineStyle(1, 0x3a4a62, 1).strokeRect(bx, y - 13, 26, 26);
+      }
+      for (let j = 0; j < 4; j++) {
+        const x = 214 + j * 20;
+        if (j < e[sys]) g.fillStyle(colors[r], 0.9).fillRect(x, y - 8, 16, 16);
+        else g.lineStyle(1, 0x3a4a62, 1).strokeRect(x, y - 8, 16, 16);
+      }
+    });
+
+    // Throttle gauge.
+    const bx = w - 34, by = h - 108, bh = 92;
+    g.fillStyle(0x11161f, 0.8).fillRect(bx, by, 12, bh);
+    g.lineStyle(1, 0x3a4a62, 1).strokeRect(bx, by, 12, bh);
+    const fill = bh * this.helm.throttle;
+    if (fill > 1) g.fillStyle(0x9fd8ff, 0.85).fillRect(bx + 2, by + bh - fill, 8, fill);
   }
 
   update(time, delta) {
     const dt = delta / 1000;
     const cam = this.cameras.main;
+    const sw = this.scale.width, sh = this.scale.height;
+
+    // The scrollFactor-0 backdrops scale with camera zoom; refit them every
+    // frame so any pinch level keeps the screen covered.
+    const z = cam.zoom;
+    for (const layer of [this.bg, this.bgNebula]) {
+      layer.setPosition((0 - sw / 2) / z + sw / 2, (0 - sh / 2) / z + sh / 2)
+        .setSize(sw / z, sh / z);
+    }
     this.bg.setTilePosition(cam.scrollX * 0.15, cam.scrollY * 0.15);
     this.bgNebula.setTilePosition(cam.scrollX * 0.28, cam.scrollY * 0.28);
 
     this.drawMinimap();
+    this.drawPanel();
     this.updateBeams(delta, time);
     this.updateEngine(this.player);
     this.updateEngine(this.enemy);
@@ -667,27 +807,30 @@ export class SandboxScene extends Phaser.Scene {
     });
     this.drawHullBars();
 
-    if (this.keys.R.isDown && this.over) { this.scene.restart(); return; }
+    const e = this.energy;
+    this.poolText.setText(`POWER  FREE ${e.pool - e.wpn - e.eng - e.rep}/${e.pool}`);
+
     if (!this.player.active || this.player.dying) return;
     const spec = this.player.spec;
 
-    // Helm: A/D turn, W/S trim throttle; touch stick sets heading + throttle.
-    const turn = spec.turn * DEG * dt;
-    if (this.touch.active) {
-      this.player.facing = Phaser.Math.Angle.RotateTo(this.player.facing, this.touch.steer, turn);
-      this.player.throttle = this.touch.throttle;
-    } else {
-      if (this.keys.A.isDown || this.keys.LEFT.isDown) this.player.facing -= turn;
-      if (this.keys.D.isDown || this.keys.RIGHT.isDown) this.player.facing += turn;
-      if (this.keys.W.isDown || this.keys.UP.isDown) this.player.throttle = Math.min(1, this.player.throttle + dt * 0.35);
-      if (this.keys.S.isDown || this.keys.DOWN.isDown) this.player.throttle = Math.max(0, this.player.throttle - dt * 0.5);
+    // Helm holds the last ordered heading; engine power scales speed and turn.
+    const engMul = ENG_MUL[e.eng];
+    this.player.speedMul = engMul;
+    if (this.helm.engaged) {
+      this.player.facing = Phaser.Math.Angle.RotateTo(
+        this.player.facing, this.helm.steer, spec.turn * DEG * dt * engMul);
     }
+    this.player.throttle = this.helm.throttle;
     this.steerCapital(this.player, dt);
 
-    this.runTurrets(this.player, this.enemy, this.playerShots, time);
-    if ((this.keys.SPACE.isDown || this.touch.fire) && !this.over) {
-      this.tryBattery(this.player, this.enemy, this.playerShots, time);
-    }
+    // Repair crews patch the hull from the energy pool.
+    this.player.hull = Math.min(spec.hull, this.player.hull + REP_RATE[e.rep] * dt);
+
+    // The weapons officer runs every battery on their own: turrets and the
+    // main battery both engage automatically; weapon power sets the tempo.
+    const wpnMul = WPN_MUL[e.wpn];
+    this.runTurrets(this.player, this.enemy, this.playerShots, time, wpnMul);
+    if (!this.over) this.tryBattery(this.player, this.enemy, this.playerShots, time, wpnMul);
 
     // Enemy captain: close to gun range, then hold a slow broadside orbit.
     if (this.enemy.active && !this.enemy.dying && !this.over) {

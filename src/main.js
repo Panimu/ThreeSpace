@@ -8,7 +8,7 @@ import { loadRefits } from './refit.js';
 
 loadRefits();
 
-new Phaser.Game({
+window.game = new Phaser.Game({
   type: Phaser.AUTO,
   parent: 'game',
   backgroundColor: '#04040a',
