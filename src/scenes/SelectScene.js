@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SHIPS } from '../ships.js';
+import { ensureStarfield } from '../fx.js';
 
 export class SelectScene extends Phaser.Scene {
   constructor() {
@@ -7,7 +8,8 @@ export class SelectScene extends Phaser.Scene {
   }
 
   create() {
-    this.bg = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'background')
+    ensureStarfield(this);
+    this.bg = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'starfield')
       .setOrigin(0).setScrollFactor(0);
 
     this.add.text(this.scale.width / 2, 22, 'SANDBOX SETUP', {

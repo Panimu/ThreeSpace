@@ -15,3 +15,7 @@ Note: original FreeSpace 2 game data (models, textures, sounds) is proprietary
 (Interplay/THQ Nordic) and must not be added to this repository.
 
 Personal local assets belong in `assets/local/` (gitignored, never committed).
+
+Sliced game-ready sprites:
+- `ships/<faction>/` — capital ships cut from the capital sheets (alpha-keyed).
+- `fx/` — beam bodies, bolt cores, flak burst cut from the ordnance sheet.

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { IMAGES, SOUNDS, resolveUrl } from '../manifest.js';
-import { ensureNebula } from '../fx.js';
+import { IMAGES, resolveUrl } from '../manifest.js';
+import { ensureNebula, ensureStarfield } from '../fx.js';
 import { version } from '../../package.json';
 
 export class TitleScene extends Phaser.Scene {
@@ -11,7 +11,6 @@ export class TitleScene extends Phaser.Scene {
   preload() {
     // The title preloads everything so Sandbox/Wiki start instantly.
     for (const [key, def] of Object.entries(IMAGES)) this.load.image(key, resolveUrl(def.url));
-    for (const [key, def] of Object.entries(SOUNDS)) this.load.audio(key, resolveUrl(def.url));
   }
 
   create() {
@@ -19,13 +18,14 @@ export class TitleScene extends Phaser.Scene {
     const h = () => this.scale.height;
 
     ensureNebula(this);
-    this.bg = this.add.tileSprite(0, 0, w(), h(), 'background').setOrigin(0).setScrollFactor(0);
+    ensureStarfield(this);
+    this.bg = this.add.tileSprite(0, 0, w(), h(), 'starfield').setOrigin(0).setScrollFactor(0);
     this.nebula = this.add.tileSprite(0, 0, w(), h(), 'nebula').setOrigin(0).setScrollFactor(0).setAlpha(0.85);
     this.scale.on('resize', (s) => { this.bg.setSize(s.width, s.height); this.nebula.setSize(s.width, s.height); });
 
     // A battleship drifts through the backdrop for scale.
     this.drifter = this.add.image(w() * 0.75, h() * 0.35, 'ship_colossus')
-      .setRotation(Math.PI / 7).setAlpha(0.5).setScale(1.4);
+      .setRotation(Math.PI / 7).setAlpha(0.5).setScale(0.7);
 
     this.add.text(w() / 2, h() * 0.3, 'THREESPACE', {
       fontFamily: 'monospace', fontSize: Math.min(64, w() / 9), fontStyle: 'bold',
@@ -48,7 +48,7 @@ export class TitleScene extends Phaser.Scene {
     this.makeButton(w() / 2, h() * 0.52 + 132, 'WIKI', () => this.scene.start('wiki'));
 
     this.add.text(w() / 2, h() - 16,
-      'Art: Endless Sky (CC-BY-SA 4.0) · MillionthVector (CC-BY 4.0) · Kenney (CC0)', {
+      'Ship & effect art: original FS2-style sprite sheets (project assets)', {
         fontFamily: 'monospace', fontSize: 11, color: '#5a6678',
       }).setOrigin(0.5, 1);
 

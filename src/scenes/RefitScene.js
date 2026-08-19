@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { SHIPS, WEAPONS, armamentSummary } from '../ships.js';
 import { cycleFit } from '../refit.js';
+import { ensureStarfield } from '../fx.js';
 
 const HP_COLORS = { spinal: 0xffb454, turret: 0x6fb7ff };
 
@@ -13,7 +14,8 @@ export class RefitScene extends Phaser.Scene {
     this.keys = Object.entries(SHIPS).filter(([, s]) => !s.hostile).map(([k]) => k);
     this.index = Math.max(0, this.keys.indexOf(this.scene.settings.data?.ship ?? 'fenris'));
 
-    this.bg = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'background')
+    ensureStarfield(this);
+    this.bg = this.add.tileSprite(0, 0, this.scale.width, this.scale.height, 'starfield')
       .setOrigin(0).setScrollFactor(0);
     // Blueprint grid ground for the wireframe read.
     this.grid = this.add.grid(this.scale.width / 2, this.scale.height / 2,
@@ -71,14 +73,15 @@ export class RefitScene extends Phaser.Scene {
       }).setOrigin(0.5, 0);
     this.shipLayer.add(this.armamentText);
 
+    const bow = ship.flip ? -1 : 1;
     ship.hardpoints.forEach((point, i) => {
-      const mx = cx + point.x * sprite.displayWidth;
-      const my = cy - point.y * sprite.displayHeight;
+      const mx = cx + bow * point.y * sprite.displayWidth;
+      const my = cy + point.x * sprite.displayHeight;
       const color = HP_COLORS[point.type];
       const ring = this.add.circle(mx, my, 13).setStrokeStyle(2, color, 1)
         .setInteractive({ useHandCursor: true });
       const dot = this.add.circle(mx, my, 3, color, 1);
-      const side = point.x >= 0 ? 1 : -1;
+      const side = mx >= cx ? 1 : -1;
       const label = this.add.text(mx + side * 22, my, WEAPONS[point.fitted].name, {
         fontFamily: 'monospace', fontSize: 12, color: '#d8e2ee',
         backgroundColor: '#10151fdd', padding: { x: 6, y: 3 },

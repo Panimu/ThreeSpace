@@ -50,10 +50,17 @@ There is no test suite or linter yet.
 Original FreeSpace 2 game data is proprietary and must never be committed;
 personal local assets belong in `assets/local/` (gitignored).
 
-## Asset status (2026-08)
+## Asset status (2026-08, post-resprite)
 
-All prior asset packs were purged and new sprite sheets are pending. Until they
-land and the catalog is rewired, `src/ships.js` and `src/manifest.js` reference
-image paths that no longer exist on disk — the game will not render sprites.
-Do not add new ship/manifest entries pointing at the old pack paths
-(`space-shooter-redux/`, `millionthvector/`, `endless-sky/`, `derived/`).
+The game now runs entirely on user-provided FS2-style sprite sheets
+(`assets/sheets/`, indexed in `assets/sheets/INDEX.md`):
+- `assets/ships/<faction>/*.png` — capital sprites sliced from the sheets
+  (horizontal art: Terran/Shivan face left → `flip: true`, Vasudan face right).
+- `assets/fx/*.png` — beam bodies, bolt cores, and the flak burst sliced from
+  the ordnance sheet; `WEAPONS` entries reference them via `bolt`/`beamTex`.
+- Backgrounds, glow orbs, and all audio are procedural (`src/fx.js`).
+- Ship `length` (metres, from the sheets) drives display size sublinearly:
+  `displayLength()` in `src/ships.js`.
+- Hardpoints carry FS2 retail armament (real counts/types per hull).
+Slicing scripts live in the session scratchpad history; re-slicing needs the
+sheet + crop configs (see INDEX.md extraction notes).

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { SHIPS, WEAPONS, armamentSummary } from '../ships.js';
+import { ensureStarfield } from '../fx.js';
 
 const HP_COLORS = { spinal: 0xffb454, turret: 0x6fb7ff };
 
@@ -13,7 +14,8 @@ export class WikiScene extends Phaser.Scene {
   create() {
     const w = () => this.scale.width;
 
-    this.bg = this.add.tileSprite(0, 0, w(), this.scale.height, 'background')
+    ensureStarfield(this);
+    this.bg = this.add.tileSprite(0, 0, w(), this.scale.height, 'starfield')
       .setOrigin(0).setScrollFactor(0);
     this.scale.on('resize', (s) => this.bg.setSize(s.width, s.height));
 
@@ -56,35 +58,35 @@ export class WikiScene extends Phaser.Scene {
       .setStrokeStyle(1, ship.hostile ? 0x5c2a2a : 0x1d2635);
     c.add(panel);
 
-    const sprite = this.add.image(90, ENTRY_H / 2 - 8, `ship_${key}`);
-    const cap = (ENTRY_H - 40) / Math.max(sprite.height, 1);
-    sprite.setScale(Math.min(cap, 1));
+    const sprite = this.add.image(160, ENTRY_H / 2 - 8, `ship_${key}`);
+    sprite.setScale(Math.min((ENTRY_H - 44) / sprite.height, 290 / sprite.width, 1.6));
     c.add(sprite);
 
     // Hardpoint markers over the sprite (art faces up: +y in hull coords is up).
     // Precursor to the wireframe refit view — same data drives combat.
+    const bow = ship.flip ? -1 : 1;
     for (const point of ship.hardpoints) {
-      const mx = sprite.x + point.x * sprite.displayWidth;
-      const my = sprite.y - point.y * sprite.displayHeight;
+      const mx = sprite.x + bow * point.y * sprite.displayWidth;
+      const my = sprite.y + point.x * sprite.displayHeight;
       const color = HP_COLORS[WEAPONS[point.fitted].type];
       c.add(this.add.circle(mx, my, 4).setStrokeStyle(1.5, color, 0.95));
       c.add(this.add.circle(mx, my, 1.2, color, 0.9));
     }
 
     const color = ship.hostile ? '#ff8a7a' : '#d8e2ee';
-    c.add(this.add.text(170, 28, `${ship.name.toUpperCase()}`, {
+    c.add(this.add.text(330, 20, `${ship.name.toUpperCase()}`, {
       fontFamily: 'monospace', fontSize: 18, color, letterSpacing: 2,
     }));
-    c.add(this.add.text(170, 52, `${ship.cls} · ${ship.faction}`, {
+    c.add(this.add.text(330, 44, `${ship.cls} · ${ship.faction}`, {
       fontFamily: 'monospace', fontSize: 12, color: '#6fb7ff',
     }));
-    c.add(this.add.text(170, 74,
-      `HULL ${ship.hull}   SPEED ${ship.speed}   TURN ${ship.turn}°/s   ARMAMENT ${armamentSummary(ship)}`, {
+    c.add(this.add.text(330, 66,
+      `${ship.length} m   HULL ${ship.hull}   SPEED ${ship.speed}   TURN ${ship.turn}°/s\nARMAMENT ${armamentSummary(ship)}`, {
         fontFamily: 'monospace', fontSize: 12, color: '#8593a6',
       }));
-    c.add(this.add.text(170, 98, ship.desc, {
+    c.add(this.add.text(330, 106, ship.desc, {
       fontFamily: 'monospace', fontSize: 12, color: '#aab6c6',
-      wordWrap: { width: this.scale.width - 240 },
+      wordWrap: { width: this.scale.width - 400 },
     }));
     return c;
   }
