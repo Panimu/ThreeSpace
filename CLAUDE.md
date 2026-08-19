@@ -47,6 +47,13 @@ There is no test suite or linter yet.
 ## Asset licensing (important)
 
 `assets/README.md` is the license inventory — keep it updated when adding assets.
-Kenney packs are CC0; MillionthVector packs are CC-BY 4.0 (credit required in shipped
-builds). Original FreeSpace 2 game data is proprietary and must never be committed;
+Original FreeSpace 2 game data is proprietary and must never be committed;
 personal local assets belong in `assets/local/` (gitignored).
+
+## Asset status (2026-08)
+
+All prior asset packs were purged and new sprite sheets are pending. Until they
+land and the catalog is rewired, `src/ships.js` and `src/manifest.js` reference
+image paths that no longer exist on disk — the game will not render sprites.
+Do not add new ship/manifest entries pointing at the old pack paths
+(`space-shooter-redux/`, `millionthvector/`, `endless-sky/`, `derived/`).
