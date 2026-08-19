@@ -350,10 +350,37 @@ export class SandboxScene extends Phaser.Scene {
   }
 
   // Aim ahead of a moving target for a projectile of the given speed.
-  leadAngle(x, y, target, projSpeed) {
-    const t = Phaser.Math.Distance.Between(x, y, target.x, target.y) / projSpeed;
+  leadAngle(x, y, target, projSpeed, aim = target) {
+    const t = Phaser.Math.Distance.Between(x, y, aim.x, aim.y) / projSpeed;
     const vx = target.body?.velocity.x ?? 0, vy = target.body?.velocity.y ?? 0;
-    return Phaser.Math.Angle.Between(x, y, target.x + vx * t, target.y + vy * t);
+    return Phaser.Math.Angle.Between(x, y, aim.x + vx * t, aim.y + vy * t);
+  }
+
+  // Gunners aim at systems, not silhouettes: pick a hardpoint on the target
+  // (live mounts preferred) with a little scatter. Fighters are aimed at
+  // center — there is nothing smaller to pick on a 15 m hull.
+  aimPoint(target) {
+    if (target.isStrike || !target.spec.hardpoints?.length) {
+      return { x: target.x, y: target.y };
+    }
+    const pts = target.spec.hardpoints;
+    const live = pts.filter((_, i) => !target.mountDisabled[i]);
+    const pool = live.length && Math.random() < 0.75 ? live : pts;
+    const pos = this.hardpointPos(target, pool[Math.floor(Math.random() * pool.length)]);
+    const scatter = target.displayHeight * 0.2;
+    return {
+      x: pos.x + (Math.random() - 0.5) * scatter,
+      y: pos.y + (Math.random() - 0.5) * scatter,
+    };
+  }
+
+  // Turret fire solution: lead the target's picked system, with dispersion
+  // that grows toward maximum range — long-range salvos genuinely miss.
+  turretAim(x, y, target, weapon) {
+    const dist = Phaser.Math.Distance.Between(x, y, target.x, target.y);
+    const base = this.leadAngle(x, y, target, weapon.speed, this.aimPoint(target));
+    const err = (target.isStrike ? 7 : 3.5) * DEG * (0.35 + 0.65 * Math.min(1, dist / weapon.range));
+    return base + (Math.random() * 2 - 1) * err;
   }
 
   // Independent strike-craft AI: pick a target for the standing order, fly an
@@ -404,7 +431,8 @@ export class SandboxScene extends Phaser.Scene {
           const nextAt = isBomber && !target.isStrike ? craft.nextBomb : craft.nextGun;
           if (dist < weapon.range && aligned && time >= nextAt && !this.over) {
             const quiet = Math.random() > 0.3;
-            this.fireShot(this.shots[side], craft, craft.x, craft.y, want, weapon, quiet);
+            const spread = want + (Math.random() - 0.5) * 5 * DEG;
+            this.fireShot(this.shots[side], craft, craft.x, craft.y, spread, weapon, quiet);
             if (isBomber && !target.isStrike) craft.nextBomb = time + weapon.delay;
             else craft.nextGun = time + weapon.delay * (0.85 + Math.random() * 0.3);
           }
@@ -591,6 +619,24 @@ export class SandboxScene extends Phaser.Scene {
       muzzle: orb(0xffffff),
       impact: orb(palette.mid),
     };
+    // Turret beams commit to a fire solution as they charge: slash beams rake
+    // a line across the hull (the famous FS2 rake attack); the rest hold a
+    // picked system — or, on a bad solution, a near-miss line that slides past.
+    if (turret && target.active) {
+      const size = Math.max(target.displayWidth, target.displayHeight);
+      const across = Phaser.Math.Angle.Between(ship.x, ship.y, target.x, target.y) + Math.PI / 2;
+      const sign = Math.random() < 0.5 ? 1 : -1;
+      if (weapon.slash && !target.isStrike) {
+        beam.slashFrom = { x: Math.cos(across) * size * 0.8 * sign, y: Math.sin(across) * size * 0.8 * sign };
+        beam.slashTo = { x: -Math.cos(across) * size * 0.55 * sign, y: -Math.sin(across) * size * 0.55 * sign };
+      } else if (Math.random() < (target.isStrike ? 0.6 : 0.85)) {
+        const ap = this.aimPoint(target);
+        beam.off = { x: ap.x - target.x, y: ap.y - target.y };
+      } else {
+        const missBy = target.isStrike ? 30 + Math.random() * 40 : size * (0.5 + Math.random() * 0.3);
+        beam.off = { x: Math.cos(across) * missBy * sign, y: Math.sin(across) * missBy * sign };
+      }
+    }
     this.beams.push(beam);
     sfx('beamCharge');
   }
@@ -610,11 +656,26 @@ export class SandboxScene extends Phaser.Scene {
         return false;
       }
       const pos = this.hardpointPos(ship, point);
-      // Spinal beams fire down the bow and sweep with the ship; turreted
-      // beams (AAA, slash) track the target from their mount.
-      const dir = beam.turret && target.active
-        ? Phaser.Math.Angle.Between(pos.x, pos.y, target.x, target.y)
-        : beam.turret ? (beam.lastDir ?? ship.facing) : ship.facing;
+      // Spinal beams fire down the bow and sweep with the ship; turret beams
+      // track their committed solution — a raked line for slash beams, a
+      // system aimpoint (or near-miss line) for the rest.
+      let dir;
+      if (!beam.turret) {
+        dir = ship.facing;
+      } else if (target.active) {
+        let ox = 0, oy = 0;
+        if (beam.slashFrom) {
+          const frac = Phaser.Math.Clamp((beam.elapsed - beam.charge) / (BEAM_RAMP + beam.hold), 0, 1);
+          ox = beam.slashFrom.x + (beam.slashTo.x - beam.slashFrom.x) * frac;
+          oy = beam.slashFrom.y + (beam.slashTo.y - beam.slashFrom.y) * frac;
+        } else if (beam.off) {
+          ox = beam.off.x;
+          oy = beam.off.y;
+        }
+        dir = Phaser.Math.Angle.Between(pos.x, pos.y, target.x + ox, target.y + oy);
+      } else {
+        dir = beam.lastDir ?? ship.facing;
+      }
       beam.lastDir = dir;
 
       // Charge phase: the muzzle glow swells before the beam erupts.
@@ -710,14 +771,12 @@ export class SandboxScene extends Phaser.Scene {
       const strikeT = this.nearestOf(pos.x, pos.y, wings, weapon.range);
       const target = weapon.anti ? (strikeT ?? capT) : (capT ?? strikeT);
       if (!target) return;
-      ship.nextFire[i] = time + weapon.delay * delayMul + Math.random() * 500;
+      ship.nextFire[i] = time + weapon.delay * delayMul + Math.random() * 1500;
       if (weapon.beam) {
         this.fireBeam(ship, target, weapon, point, true);
         return;
       }
-      const aim = this.leadAngle(pos.x, pos.y, target, weapon.speed)
-        + (Math.random() - 0.5) * (target.isStrike ? 6 : 4) * DEG;
-      this.fireShot(group, ship, pos.x, pos.y, aim, weapon);
+      this.fireShot(group, ship, pos.x, pos.y, this.turretAim(pos.x, pos.y, target, weapon), weapon);
     });
   }
 
