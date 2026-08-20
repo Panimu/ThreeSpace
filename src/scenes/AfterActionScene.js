@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { ensureStarfield, TEXT_RES } from '../fx.js';
+import { loadCampaign, saveCampaign, applyResult } from '../campaignState.js';
 
 // After-action report: what the battle cost, ship by ship. Beyond being the
 // payoff for a fight you mostly watched, this is the campaign's hand-off
@@ -13,6 +14,13 @@ export class AfterActionScene extends Phaser.Scene {
   create(report) {
     this.report = report ?? this.report;
     const r = this.report;
+    // A campaign mission folds its result back into the roster exactly once:
+    // damage sticks, losses are permanent, a win advances the war.
+    if (r.missionId && !this.applied) {
+      this.applied = true;
+      const state = loadCampaign();
+      if (state) saveCampaign(applyResult(state, r));
+    }
     const w = this.scale.width, h = this.scale.height;
     const narrow = w < 620;
 
@@ -25,7 +33,8 @@ export class AfterActionScene extends Phaser.Scene {
       letterSpacing: opts.ls ?? 0, align: opts.align ?? 'left',
     }).setOrigin(opts.ox ?? 0, 0);
 
-    text(w / 2, 16, 'AFTER ACTION', 13, '#5a6678', { ox: 0.5, ls: 4 });
+    text(w / 2, 16, r.missionTitle ? `AFTER ACTION · ${r.missionTitle.toUpperCase()}` : 'AFTER ACTION',
+      13, '#5a6678', { ox: 0.5, ls: 4 });
     text(w / 2, 36, r.won ? 'HOSTILE FLEET DESTROYED' : 'FLEET LOST',
       Math.min(24, w / 17), r.won ? '#7dd68f' : '#ff7a6a', { ox: 0.5, ls: 2 });
 
@@ -64,10 +73,18 @@ export class AfterActionScene extends Phaser.Scene {
 
     const bw = Math.min(180, (w - 60) / 3);
     const by = h - 54;
-    this.makeButton(w / 2 - bw - 10, by, bw, 'REMATCH', () =>
-      this.scene.start('sandbox', { player: r.playerKeys, enemy: r.enemyKeys }));
-    this.makeButton(w / 2, by, bw, 'NEW BATTLE', () => this.scene.start('select'));
-    this.makeButton(w / 2 + bw + 10, by, bw, 'TITLE', () => this.scene.start('title'));
+    if (r.missionId) {
+      // Campaign: the roster has already been updated, so the only way on is
+      // back to the bridge — a loss simply re-offers the same operation.
+      this.makeButton(w / 2 - bw / 2 - 6, by, bw, r.won ? 'CONTINUE' : 'REGROUP',
+        () => this.scene.start('campaign'));
+      this.makeButton(w / 2 + bw / 2 + 6, by, bw, 'TITLE', () => this.scene.start('title'));
+    } else {
+      this.makeButton(w / 2 - bw - 10, by, bw, 'REMATCH', () =>
+        this.scene.start('sandbox', { player: r.playerKeys, enemy: r.enemyKeys }));
+      this.makeButton(w / 2, by, bw, 'NEW BATTLE', () => this.scene.start('select'));
+      this.makeButton(w / 2 + bw + 10, by, bw, 'TITLE', () => this.scene.start('title'));
+    }
   }
 
   makeButton(cx, cy, bw, label, onClick) {

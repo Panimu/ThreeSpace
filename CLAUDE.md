@@ -27,11 +27,17 @@ There is no test suite or linter yet.
   plus `WikiScene` (ship registry) and `RefitScene` (wireframe hardpoint
   refitting; per-browser persistence via `src/refit.js`, which mutates the
   SHIPS catalog in place).
-- **Campaign hand-off**: `SandboxScene.buildReport()` produces the battle
-  record — per-ship hull/mounts/damage keyed by individual ship name, craft
-  losses and duration. That object is what a campaign layer will consume to
-  carry damage, losses and veterancy between missions; extend it rather than
-  bolting a parallel save format onto the scene.
+- **Campaign**: `src/campaign.js` is the mission graph — the FS2 single-player
+  campaign (28 main operations plus two optional SOC loops) rebuilt around the
+  capital ships actually present in each retail mission. `CampaignScene` is the
+  bridge: orders, opposition, and which damaged hulls you sortie (max 3).
+  `src/campaignState.js` owns the save (`threespace-campaign-v1`): hull damage
+  and shot-off mounts persist between missions, losses are permanent, a
+  dockyard refit restores a slice of hull and a few mounts, and `reward` hulls
+  join the force as the war escalates. `SandboxScene.buildReport()` is the
+  hand-off both ways — `AfterActionScene` folds it back via `applyResult()`.
+  Missions carry an `objective` (`destroy` / `survive` / `protect`) and may
+  `attach` ships that fight for you without joining the roster.
 - Tactical layer: tap a hostile to **designate** it (guns and ships under
   orders prioritise it); each turret only bears within its hull side's arc
   (`mountArc`), so bow-on and broadside are real choices; enemy beams charging
@@ -66,6 +72,10 @@ There is no test suite or linter yet.
   wiki draws them as markers. Planned direction: a wireframe refit screen where
   the player re-fits hardpoints and other systems — build on this data, don't
   invent parallel structures.
+- `SandboxScene` doubles as the campaign battle scene: a side is a list of
+  hull keys *or* records (`{key, name, hull, deadMounts}`) so campaign damage
+  spawns in, and `data.mission` switches on objectives and named opposition.
+  Never mutate the passed mission — it is the shared `MISSIONS` record.
 - `src/manifest.js` is the asset manifest: **all** art/sound is resolved through it.
   Each image entry carries `angleOffset` (degrees to align the art with facing 0 = east)
   and `scale`. Never hardcode asset paths in scenes — add manifest entries.

@@ -50,10 +50,12 @@ export class TitleScene extends Phaser.Scene {
       fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 11, color: '#5a6678',
     }).setOrigin(1, 1);
 
-    const buttonsTop = Math.max(blurb.y + blurb.height + 28, h() * 0.5);
-    this.makeButton(w() / 2, buttonsTop, 'SANDBOX', () => this.scene.start('select'));
-    this.makeButton(w() / 2, buttonsTop + 62, 'REFIT', () => this.scene.start('refit'));
-    this.makeButton(w() / 2, buttonsTop + 124, 'WIKI', () => this.scene.start('wiki'));
+    const buttonsTop = Math.max(blurb.y + blurb.height + 24, h() * 0.46);
+    const gap = Math.min(58, (h() - buttonsTop - 40) / 4);
+    this.makeButton(w() / 2, buttonsTop, 'CAMPAIGN', () => this.scene.start('campaign'));
+    this.makeButton(w() / 2, buttonsTop + gap, 'SANDBOX', () => this.scene.start('select'));
+    this.makeButton(w() / 2, buttonsTop + gap * 2, 'REFIT', () => this.scene.start('refit'));
+    this.makeButton(w() / 2, buttonsTop + gap * 3, 'WIKI', () => this.scene.start('wiki'));
 
     this.add.text(w() / 2, h() - 8,
       'Ship & effect art: original FS2-style sprite sheets (project assets)', {
@@ -61,7 +63,7 @@ export class TitleScene extends Phaser.Scene {
         align: 'center', wordWrap: { width: w() - 120 },
       }).setOrigin(0.5, 1);
 
-    this.input.keyboard.on('keydown-ENTER', () => this.scene.start('select'));
+    this.input.keyboard.on('keydown-ENTER', () => this.scene.start('campaign'));
 
     // Orientation change: rebuild the layout once the resize settles.
     const onResize = () => {

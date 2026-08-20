@@ -74,9 +74,25 @@ export class SandboxScene extends Phaser.Scene {
   }
 
   create(data) {
-    const toArr = (v, fallback) => (Array.isArray(v) ? [...v] : [v ?? fallback]);
-    this.playerKeys = toArr(data?.player ?? this.playerKeys, 'fenris');
-    this.enemyKeys = toArr(data?.enemy ?? this.enemyKeys, 'cain');
+    // A side is a list of hull keys, or of records carrying a ship's name and
+    // its accumulated campaign damage: { key, name, hull, deadMounts }.
+    const toSpecs = (v, fallback) => (Array.isArray(v) ? [...v] : [v ?? fallback])
+      .map((e) => (typeof e === 'string' ? { key: e } : { ...e }));
+    const brief = data?.mission ?? this.mission ?? null;
+    this.mission = brief ? { ...brief, objective: { ...brief.objective } } : null;
+    this.playerSpecs = toSpecs(data?.player ?? this.playerSpecs, 'fenris');
+    this.enemySpecs = toSpecs(data?.enemy ?? this.enemySpecs, 'cain');
+    // Ships lent to you for one operation fight under your command but never
+    // join the campaign roster.
+    if (this.mission?.attach) {
+      for (const a of this.mission.attach) {
+        if (!this.playerSpecs.some((p) => p.attached && p.name === a.name)) {
+          this.playerSpecs.push({ ...a, attached: true });
+        }
+      }
+    }
+    const enemyNames = this.mission?.names?.B ?? [];
+    this.enemySpecs.forEach((e, i) => { e.name = e.name ?? enemyNames[i]; });
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     ensureNebula(this);
     ensureBeamTextures(this);
@@ -101,7 +117,7 @@ export class SandboxScene extends Phaser.Scene {
     // campaign will carry it forward as persistent fleet damage.
     this.usedNames = new Set();
     this.craftLost = { A: 0, B: 0 };
-    this.startedAt = this.time.now;
+    this.startedAt = null; // stamped on the first update tick
 
     const onShot = (a, b) => this.onShotHit(a, b);
     this.physics.add.overlap(this.shots.A, this.capGroup.B, onShot);
@@ -109,13 +125,13 @@ export class SandboxScene extends Phaser.Scene {
     this.physics.add.overlap(this.shots.B, this.capGroup.A, onShot);
     this.physics.add.overlap(this.shots.B, this.strikeGroup.A, onShot);
 
-    this.playerKeys.forEach((key, i) => {
-      const y = WORLD_H / 2 + (i - (this.playerKeys.length - 1) / 2) * 520;
-      this.fleets.A.push(this.spawnCapital(key, 1200, y, 20 * DEG, 'A'));
+    this.playerSpecs.forEach((spec, i) => {
+      const y = WORLD_H / 2 + (i - (this.playerSpecs.length - 1) / 2) * 520;
+      this.fleets.A.push(this.spawnCapital(spec.key, 1200, y, 20 * DEG, 'A', spec));
     });
-    this.enemyKeys.forEach((key, i) => {
-      const y = WORLD_H / 2 + (i - (this.enemyKeys.length - 1) / 2) * 520;
-      this.fleets.B.push(this.spawnCapital(key, WORLD_W - 1400, y, 200 * DEG, 'B'));
+    this.enemySpecs.forEach((spec, i) => {
+      const y = WORLD_H / 2 + (i - (this.enemySpecs.length - 1) / 2) * 520;
+      this.fleets.B.push(this.spawnCapital(spec.key, WORLD_W - 1400, y, 200 * DEG, 'B', spec));
     });
     this.conIdx = 0;
 
@@ -277,7 +293,7 @@ export class SandboxScene extends Phaser.Scene {
     return count;
   }
 
-  spawnCapital(key, x, y, facing, side) {
+  spawnCapital(key, x, y, facing, side, state = {}) {
     const spec = SHIPS[key];
     const ship = this.physics.add.image(x, y, this.makeDamageCanvas(key));
     ship.damageCanvas = this.textures.get(ship.texture.key);
@@ -286,17 +302,20 @@ export class SandboxScene extends Phaser.Scene {
     ship.body.setSize(ship.width * 0.75, ship.height * 0.75, true);
     ship.spec = spec;
     ship.side = side;
-    ship.shipName = assignName(spec, this.usedNames);
+    ship.shipName = state.name ?? assignName(spec, this.usedNames);
+    if (state.name) this.usedNames.add(state.name);
+    ship.attached = !!state.attached;
     // Per-hull battle record for the after-action report.
     ship.stats = { dealt: 0, taken: 0, mountsLost: 0 };
-    ship.hull = spec.hull;
+    // Campaign ships arrive carrying the damage they left the last battle with.
+    ship.hull = Math.min(spec.hull, state.hull ?? spec.hull);
     ship.facing = facing;
     ship.throttle = 0;
     ship.angleOffset = IMAGES[`ship_${key}`].angleOffset * DEG;
     ship.syncAngle = () => ship.setRotation(ship.facing + ship.angleOffset);
     ship.syncAngle();
     ship.nextFire = spec.hardpoints.map(() => 0);
-    ship.mountDisabled = spec.hardpoints.map(() => false);
+    ship.mountDisabled = spec.hardpoints.map((_, i) => !!state.deadMounts?.includes(i));
     ship.mountBaseline = spec.hardpoints.map((point) =>
       this.countOpaque(ship.damageCanvas, this.mountRegion(ship, point)));
     ship.accent = factionColor(spec);
@@ -1087,16 +1106,26 @@ export class SandboxScene extends Phaser.Scene {
     this.time.delayedCall(700, () => emitter.destroy());
   }
 
-  endMission(won) {
+  endMission(won, reason) {
+    if (this.over) return;
     this.over = true;
     this.lockedTarget = null;
     if (won) sfx('win');
-    this.banner.setText(won
-      ? 'HOSTILE FLEET DESTROYED\n\nTAP FOR REPORT'
-      : 'FLEET LOST\n\nTAP FOR REPORT');
+    this.banner.setText(`${this.outcomeText(won, reason)}\n\nTAP FOR REPORT`);
     this.report = this.buildReport(won);
     // Let the last hull finish burning, then hand over to the report.
     this.time.delayedCall(4000, () => this.showReport());
+  }
+
+  outcomeText(won, reason) {
+    const obj = this.mission?.objective;
+    if (!won) {
+      if (reason === 'charge') return `${(obj?.ship ?? 'CHARGE').toUpperCase()} LOST`;
+      return this.mission ? 'TASK FORCE LOST' : 'FLEET LOST';
+    }
+    if (reason === 'held') return 'WITHDRAWAL AUTHORISED';
+    if (obj?.kind === 'protect') return `${obj.ship.toUpperCase()} SECURED`;
+    return 'HOSTILE FLEET DESTROYED';
   }
 
   // The battle record. The campaign layer will consume exactly this shape to
@@ -1105,8 +1134,13 @@ export class SandboxScene extends Phaser.Scene {
     const roster = (side) => this.fleets[side].map((ship) => ({
       cls: ship.spec.name,
       shipName: ship.shipName,
+      attached: !!ship.attached,
       survived: !!ship.active,
       hullPct: Math.max(0, Math.round((ship.hull / ship.spec.hull) * 100)),
+      // Raw state the campaign folds back into the roster.
+      hullEnd: Math.max(0, Math.round(ship.hull)),
+      deadMounts: ship.mountDisabled
+        .map((dead, i) => (dead ? i : -1)).filter((i) => i >= 0),
       mountsLive: ship.active ? ship.mountDisabled.filter((d) => !d).length : 0,
       mountsTotal: ship.spec.hardpoints.length,
       dealt: ship.stats.dealt,
@@ -1114,11 +1148,14 @@ export class SandboxScene extends Phaser.Scene {
     }));
     return {
       won,
-      durationMs: this.time.now - this.startedAt,
+      missionId: this.mission?.id ?? null,
+      missionTitle: this.mission?.title ?? null,
+      durationMs: this.elapsed(),
       craftLost: { ...this.craftLost },
       fleets: { A: roster('A'), B: roster('B') },
-      playerKeys: [...this.playerKeys],
-      enemyKeys: [...this.enemyKeys],
+      playerKeys: this.playerSpecs.filter((p) => !p.attached),
+      enemyKeys: [...this.enemySpecs],
+      mission: this.mission,
     };
   }
 
@@ -1138,6 +1175,11 @@ export class SandboxScene extends Phaser.Scene {
       fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 11, color: '#9fd8ff', lineSpacing: 3,
     }).setDepth(21);
     this.uiPlace(this.hud, () => ({ x: 52, y: 8 }));
+
+    this.objText = this.add.text(0, 0, '', {
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 12, color: '#ffb454',
+    }).setDepth(21);
+    this.uiPlace(this.objText, () => ({ x: 52, y: this.hudBottom() + 30 }));
 
     this.banner = this.add.text(0, 0, '', {
       fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 30, color: '#ffffff', align: 'center',
@@ -1313,6 +1355,40 @@ export class SandboxScene extends Phaser.Scene {
     return { x: 52 + i * (tw + 6), y: this.hudBottom(), w: tw, h: 26 };
   }
 
+  elapsed() {
+    return this.startedAt === null ? 0 : this.time.now - this.startedAt;
+  }
+
+  // Mission objectives. Destroy is the sandbox default and needs no watching;
+  // a hold-out has a clock, and an escort fails the moment its charge dies.
+  checkObjective() {
+    const obj = this.mission?.objective;
+    if (!obj || this.over) return;
+    if (obj.kind === 'survive') {
+      if (this.elapsed() / 1000 >= obj.seconds) this.endMission(true, 'held');
+    } else if (obj.kind === 'protect') {
+      const guard = this.fleets.A.find((sh) => sh.shipName === obj.ship);
+      if (guard && !guard.active) this.endMission(false, 'charge');
+    }
+  }
+
+  // One line of orders, kept short enough for a portrait phone.
+  objectiveLine() {
+    const obj = this.mission?.objective;
+    if (!obj) return '';
+    if (obj.kind === 'survive') {
+      const left = Math.max(0, obj.seconds - this.elapsed() / 1000);
+      const m = Math.floor(left / 60), sec = Math.floor(left % 60);
+      return `HOLD ${m}:${String(sec).padStart(2, '0')}`;
+    }
+    if (obj.kind === 'protect') {
+      const guard = this.fleets.A.find((sh) => sh.shipName === obj.ship);
+      const pct = guard?.active ? Math.max(0, Math.round((guard.hull / guard.spec.hull) * 100)) : 0;
+      return `PROTECT ${obj.ship.toUpperCase()} ${pct}%`;
+    }
+    return 'DESTROY ALL HOSTILES';
+  }
+
   // Where the fleet tabs start: clear of however many lines the status
   // block wrapped to on this screen.
   hudBottom() {
@@ -1472,6 +1548,8 @@ export class SandboxScene extends Phaser.Scene {
   }
 
   update(time, delta) {
+    // The scene clock is only meaningful once the loop is running.
+    if (this.startedAt === null) this.startedAt = time;
     const dt = delta / 1000;
     const cam = this.cameras.main;
     const sw = this.scale.width, sh = this.scale.height;
@@ -1512,6 +1590,11 @@ export class SandboxScene extends Phaser.Scene {
 
     this.updateHangars(time);
     this.updateStrike(dt, time);
+    this.checkObjective();
+    if (this.mission) {
+      this.objText.setPosition(UIX + 52, this.hudBottom() + 30)
+        .setText(this.objectiveLine());
+    }
 
     const e = this.energy;
     this.poolText.setText(`POWER  FREE ${e.pool - e.wpn - e.eng - e.rep}/${e.pool}`);
