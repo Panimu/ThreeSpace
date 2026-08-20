@@ -12,6 +12,12 @@
 // Colossus/Sathanas model their signature battery plus a representative
 // fraction of their dozens of secondary mounts). Positions are estimated from
 // the sheet art. x = lateral hull fraction, y = fraction toward the bow.
+//
+// `speed` comes from FS2 retail max velocity (m/s × 2.2 → px/s), checked
+// against the FreeSpace wiki ship database — e.g. Leviathan 10 m/s,
+// destroyers 15, Mentu 35, Aeolus/Deimos/Cain/Moloch 30, Colossus and
+// Sathanas both 25. Retail publishes no capital rotation times, so `turn`
+// (deg/s) and `accel` are class-derived per hull to match canon handling.
 
 // `bolt` and `beamTex` reference sprites sliced from the ordnance sheet
 // (assets/fx/, see slice-fx script) — the game's projectiles and beams are the
@@ -54,7 +60,7 @@ export const SHIPS = {
   fenris: {
     name: 'GTC Fenris', cls: 'Light cruiser', faction: 'GTVA', length: 260,
     url: 'ships/terran/fenris.png', flip: true,
-    hull: 420, speed: 62, turn: 24, accel: 24,
+    hull: 420, speed: 55, turn: 24, accel: 22,
     hardpoints: [ // FS2 retail: 3 turrets
       hp('spinal', 'terranHuge', 0, 0.4),
       hp('turret', 'terranTurret', 0.2, 0.05),
@@ -66,7 +72,7 @@ export const SHIPS = {
   leviathan: {
     name: 'GTC Leviathan', cls: 'Cruiser', faction: 'GTVA', length: 253,
     url: 'ships/terran/leviathan.png', flip: true,
-    hull: 650, speed: 50, turn: 18, accel: 18,
+    hull: 650, speed: 22, turn: 12, accel: 10,
     hardpoints: [ // Fenris hull, one more turret, heavier plate
       hp('spinal', 'terranHuge', 0, 0.4),
       hp('turret', 'terranTurret', 0.2, 0.05),
@@ -79,7 +85,7 @@ export const SHIPS = {
   aeolus: {
     name: 'GTC Aeolus', cls: 'Flak cruiser', faction: 'GTVA', length: 272,
     url: 'ships/terran/aeolus.png', flip: true,
-    hull: 560, speed: 53, turn: 21, accel: 20,
+    hull: 560, speed: 66, turn: 22, accel: 24,
     hardpoints: [ // FS2 retail: 8 turrets, AAA-heavy — no main battery at all
       ...pair('turret', 'aaaf', 0.22, 0.18),
       ...pair('turret', 'standardFlak', 0.22, -0.12),
@@ -93,7 +99,7 @@ export const SHIPS = {
   deimos: {
     name: 'GTCv Deimos', cls: 'Corvette', faction: 'GTVA', length: 717,
     url: 'ships/terran/deimos.png', flip: true,
-    hull: 800, speed: 47, turn: 17, accel: 17,
+    hull: 800, speed: 66, turn: 16, accel: 20,
     hardpoints: [ // FS2 retail: 13 turrets incl. 2 slash beams
       ...pair('turret', 'lterslash', 0.16, 0.32),
       ...pair('turret', 'aaaf', 0.18, 0.08),
@@ -109,7 +115,7 @@ export const SHIPS = {
   orion: {
     name: 'GTD Orion', cls: 'Destroyer', faction: 'GTVA', length: 2100,
     url: 'ships/terran/orion.png', flip: true,
-    hull: 1600, speed: 34, turn: 10, accel: 11,
+    hull: 1600, speed: 33, turn: 7, accel: 9,
     hardpoints: [ // FS2 retail: 14 turrets incl. heavy beam battery
       ...pair('spinal', 'bgreen', 0.06, 0.44),
       ...pair('turret', 'lterslash', 0.16, 0.2),
@@ -128,7 +134,7 @@ export const SHIPS = {
   hecate: {
     name: 'GTD Hecate', cls: 'Destroyer', faction: 'GTVA', length: 2174,
     url: 'ships/terran/hecate.png', flip: true,
-    hull: 1400, speed: 37, turn: 11, accel: 12,
+    hull: 1400, speed: 33, turn: 8, accel: 10,
     hardpoints: [ // FS2 retail: 18 turrets, AAA-heavy command ship
       ...pair('spinal', 'bgreen', 0.06, 0.44),
       ...pair('turret', 'lterslash', 0.16, 0.25),
@@ -146,7 +152,7 @@ export const SHIPS = {
   hades: {
     name: 'GTD Hades', cls: 'Superdestroyer', faction: 'GTVA', length: 3404,
     url: 'ships/terran/hades.png', flip: true,
-    hull: 2000, speed: 30, turn: 7, accel: 9,
+    hull: 2000, speed: 33, turn: 6, accel: 8,
     hardpoints: [ // FS1-era hull, FS2-style refit: 16 mounts
       hp('spinal', 'bgreen', 0, 0.46), ...pair('spinal', 'bgreen', 0.08, 0.38),
       ...pair('turret', 'aaaf', 0.18, 0.15), hp('turret', 'aaaf', 0, 0.05),
@@ -161,7 +167,7 @@ export const SHIPS = {
   colossus: {
     name: 'GTVA Colossus', cls: 'Juggernaut', faction: 'GTVA', length: 6000,
     url: 'ships/terran/colossus.png', flip: true,
-    hull: 3000, speed: 28, turn: 6, accel: 7,
+    hull: 3000, speed: 55, turn: 5, accel: 7,
     hardpoints: [ // Canon carries dozens of turrets; signature BFGreen battery + representative screen modeled
       ...pair('spinal', 'bfgreen', 0.05, 0.46), ...pair('spinal', 'bfgreen', 0.12, 0.4),
       ...pair('turret', 'lterslash', 0.16, 0.28), ...pair('turret', 'lterslash', 0.16, -0.05),
@@ -179,7 +185,7 @@ export const SHIPS = {
   aten: {
     name: 'GVC Aten', cls: 'Cruiser', faction: 'Vasudan (allied)', length: 230,
     url: 'ships/vasudan/aten.png', flip: false,
-    hull: 380, speed: 56, turn: 21, accel: 22,
+    hull: 380, speed: 55, turn: 20, accel: 18,
     hardpoints: [ // FS2 retail: 4 turrets
       hp('turret', 'svas', 0, 0.3),
       hp('turret', 'standardFlak', 0, -0.1),
@@ -190,7 +196,7 @@ export const SHIPS = {
   mentu: {
     name: 'GVC Mentu', cls: 'Cruiser', faction: 'Vasudan (allied)', length: 322,
     url: 'ships/vasudan/mentu.png', flip: false,
-    hull: 500, speed: 55, turn: 20, accel: 20,
+    hull: 500, speed: 77, turn: 24, accel: 26,
     hardpoints: [ // FS2 retail: 6 turrets
       ...pair('turret', 'svas', 0.12, 0.28),
       hp('turret', 'standardFlak', 0, -0.05),
@@ -202,7 +208,7 @@ export const SHIPS = {
   sobek: {
     name: 'GVCv Sobek', cls: 'Corvette', faction: 'Vasudan (allied)', length: 608,
     url: 'ships/vasudan/sobek.png', flip: false,
-    hull: 820, speed: 45, turn: 16, accel: 16,
+    hull: 820, speed: 66, turn: 15, accel: 20,
     hardpoints: [ // FS2 retail: 11 turrets
       hp('spinal', 'bvas', 0, 0.42),
       ...pair('turret', 'svas', 0.14, 0.25),
@@ -216,7 +222,7 @@ export const SHIPS = {
   typhon: {
     name: 'GVD Typhon', cls: 'Destroyer', faction: 'Vasudan (allied)', length: 2153,
     url: 'ships/vasudan/typhon.png', flip: false,
-    hull: 1500, speed: 31, turn: 8, accel: 10,
+    hull: 1500, speed: 33, turn: 6.5, accel: 8,
     hardpoints: [ // FS2 retail: 9 turrets on the ancient hull
       ...pair('spinal', 'bvas', 0.06, 0.44),
       hp('turret', 'svas', 0, 0.25),
@@ -232,7 +238,7 @@ export const SHIPS = {
   hatshepsut: {
     name: 'GVD Hatshepsut', cls: 'Destroyer', faction: 'Vasudan (allied)', length: 2126,
     url: 'ships/vasudan/hatshepsut.png', flip: false,
-    hull: 1550, speed: 34, turn: 9, accel: 11,
+    hull: 1550, speed: 33, turn: 8, accel: 9,
     hardpoints: [ // FS2 retail: 15 turrets, heavy forward beam array in the fork bow
       ...pair('spinal', 'bvas', 0.1, 0.44), hp('spinal', 'bvas', 0, 0.2),
       ...pair('turret', 'svas', 0.16, 0.28),
@@ -250,7 +256,7 @@ export const SHIPS = {
   cain: {
     name: 'SC Cain', cls: 'Cruiser', faction: 'Shivan', length: 190,
     url: 'ships/shivan/cain.png', flip: true,
-    hull: 400, speed: 60, turn: 22, accel: 23,
+    hull: 400, speed: 66, turn: 26, accel: 26,
     hardpoints: [ // FS2 retail: 4 turrets
       hp('spinal', 'sred', 0, 0.4),
       hp('turret', 'shivanTurret', 0.2, 0.05),
@@ -263,7 +269,7 @@ export const SHIPS = {
   lilith: {
     name: 'SC Lilith', cls: 'Heavy cruiser', faction: 'Shivan', length: 190,
     url: 'ships/shivan/lilith.png', flip: true,
-    hull: 550, speed: 48, turn: 17, accel: 17,
+    hull: 550, speed: 44, turn: 14, accel: 14,
     hardpoints: [ // Cain hull, LRed in place of the SRed
       hp('spinal', 'lred', 0, 0.4),
       hp('turret', 'shivanTurret', 0.2, 0.05),
@@ -276,7 +282,7 @@ export const SHIPS = {
   rakshasa: {
     name: 'SC Rakshasa', cls: 'Cruiser', faction: 'Shivan', length: 349,
     url: 'ships/shivan/rakshasa.png', flip: true,
-    hull: 480, speed: 54, turn: 20, accel: 20,
+    hull: 480, speed: 44, turn: 18, accel: 16,
     hardpoints: [ // FS2 retail: 8 turrets, twin forward beams
       ...pair('spinal', 'sred', 0.1, 0.4),
       ...pair('turret', 'saaa', 0.16, 0.05),
@@ -289,7 +295,7 @@ export const SHIPS = {
   moloch: {
     name: 'SCv Moloch', cls: 'Corvette', faction: 'Shivan', length: 724,
     url: 'ships/shivan/moloch.png', flip: true,
-    hull: 750, speed: 44, turn: 15, accel: 16,
+    hull: 750, speed: 66, turn: 17, accel: 20,
     hardpoints: [ // FS2 retail: 11 turrets
       hp('spinal', 'lred', 0, 0.42), ...pair('spinal', 'sred', 0.12, 0.34),
       ...pair('turret', 'saaa', 0.16, 0.08),
@@ -303,7 +309,7 @@ export const SHIPS = {
   demon: {
     name: 'SD Demon', cls: 'Destroyer', faction: 'Shivan', length: 2139,
     url: 'ships/shivan/demon.png', flip: true,
-    hull: 1500, speed: 34, turn: 10, accel: 11,
+    hull: 1500, speed: 44, turn: 8, accel: 10,
     hardpoints: [ // FS2 retail: 12 turrets
       ...pair('spinal', 'lred', 0.08, 0.42), hp('spinal', 'sred', 0, 0.3),
       ...pair('turret', 'saaa', 0.16, 0.1), hp('turret', 'saaa', 0, -0.05),
@@ -319,7 +325,7 @@ export const SHIPS = {
   ravana: {
     name: 'SD Ravana', cls: 'Destroyer', faction: 'Shivan', length: 2346,
     url: 'ships/shivan/ravana.png', flip: true,
-    hull: 1400, speed: 34, turn: 11, accel: 11,
+    hull: 1400, speed: 44, turn: 9, accel: 11,
     hardpoints: [ // FS2 retail: 13 turrets, main beams boresighted down the prongs
       ...pair('spinal', 'lred', 0.16, 0.44),
       ...pair('spinal', 'sred', 0.06, 0.3),
@@ -336,7 +342,7 @@ export const SHIPS = {
   lucifer: {
     name: 'SD Lucifer', cls: 'Superdestroyer', faction: 'Shivan', length: 2777,
     url: 'ships/shivan/lucifer.png', flip: true,
-    hull: 2600, speed: 30, turn: 7, accel: 9,
+    hull: 2600, speed: 33, turn: 6, accel: 8,
     hardpoints: [ // The five great beams of the Great War, plus escorts' nightmares
       ...pair('spinal', 'bfred', 0.06, 0.45), hp('spinal', 'lred', 0, 0.36),
       ...pair('spinal', 'lred', 0.1, 0.25),
@@ -352,7 +358,7 @@ export const SHIPS = {
   sathanas: {
     name: 'SJ Sathanas', cls: 'Juggernaut', faction: 'Shivan', length: 5978,
     url: 'ships/shivan/sathanas.png', flip: true,
-    hull: 3200, speed: 28, turn: 6, accel: 7,
+    hull: 3200, speed: 55, turn: 5.5, accel: 7,
     hardpoints: [ // Four ultra-heavy claw beams + representative secondary battery
       ...pair('spinal', 'bfred', 0.14, 0.46), ...pair('spinal', 'bfred', 0.22, 0.38),
       ...pair('spinal', 'sred', 0.06, 0.3),
@@ -377,63 +383,63 @@ export const SHIPS = {
 export const STRIKECRAFT = {
   // Terran
   myrmidon:  { name: 'GTF Myrmidon', cls: 'Fighter', faction: 'GTVA', length: 15, url: 'ships/terran/myrmidon.png',
-    speed: 185, turn: 160, hull: 16, gun: { damage: 4, range: 400, delay: 1500, speed: 560, bolt: 'fx_bolt_subach' } },
+    speed: 187, turn: 150, hull: 16, gun: { damage: 4, range: 400, delay: 1500, speed: 560, bolt: 'fx_bolt_subach' } },
   perseus:   { name: 'GTF Perseus', cls: 'Interceptor', faction: 'GTVA', length: 17, url: 'ships/terran/perseus.png',
-    speed: 205, turn: 150, hull: 14, gun: { damage: 4, range: 420, delay: 1950, speed: 580, bolt: 'fx_bolt_subach' } },
+    speed: 198, turn: 160, hull: 14, gun: { damage: 4, range: 420, delay: 1950, speed: 580, bolt: 'fx_bolt_subach' } },
   hercules2: { name: 'GTF Hercules Mk II', cls: 'Assault fighter', faction: 'GTVA', length: 20, url: 'ships/terran/hercules2.png',
-    speed: 160, turn: 120, hull: 26, gun: { damage: 6, range: 400, delay: 1750, speed: 540, bolt: 'fx_bolt_subach' } },
+    speed: 132, turn: 105, hull: 26, gun: { damage: 6, range: 400, delay: 1750, speed: 540, bolt: 'fx_bolt_subach' } },
   ulysses:   { name: 'GTF Ulysses', cls: 'Fighter', faction: 'GTVA', length: 16, url: 'ships/terran/ulysses.png',
-    speed: 190, turn: 175, hull: 15, gun: { damage: 4, range: 380, delay: 1950, speed: 560, bolt: 'fx_bolt_subach' } },
+    speed: 180, turn: 195, hull: 15, gun: { damage: 4, range: 380, delay: 1950, speed: 560, bolt: 'fx_bolt_subach' } },
   medusa:    { name: 'GTB Medusa', cls: 'Bomber', faction: 'GTVA', length: 24, url: 'ships/terran/medusa.png',
-    speed: 130, turn: 90, hull: 30, gun: { damage: 4, range: 350, delay: 1800, speed: 520, bolt: 'fx_bolt_subach' },
+    speed: 127, turn: 85, hull: 30, gun: { damage: 4, range: 350, delay: 1800, speed: 520, bolt: 'fx_bolt_subach' },
     bomb: { damage: 60, range: 780, delay: 18000, speed: 250, bolt: 'fx_bolt_terranhuge' } },
   ursa:      { name: 'GTB Ursa', cls: 'Heavy bomber', faction: 'GTVA', length: 31, url: 'ships/terran/ursa.png',
-    speed: 110, turn: 70, hull: 45, gun: { damage: 5, range: 350, delay: 1950, speed: 520, bolt: 'fx_bolt_subach' },
+    speed: 116, turn: 60, hull: 45, gun: { damage: 5, range: 350, delay: 1950, speed: 520, bolt: 'fx_bolt_subach' },
     bomb: { damage: 90, range: 820, delay: 22000, speed: 230, bolt: 'fx_bolt_terranhuge' } },
   artemis:   { name: 'GTB Artemis', cls: 'Bomber', faction: 'GTVA', length: 24, url: 'ships/terran/artemis.png',
-    speed: 150, turn: 100, hull: 26, gun: { damage: 4, range: 360, delay: 1750, speed: 530, bolt: 'fx_bolt_subach' },
+    speed: 143, turn: 100, hull: 26, gun: { damage: 4, range: 360, delay: 1750, speed: 530, bolt: 'fx_bolt_subach' },
     bomb: { damage: 55, range: 760, delay: 16000, speed: 260, bolt: 'fx_bolt_terranhuge' } },
   boanerges: { name: 'GTB Boanerges', cls: 'Heavy bomber', faction: 'GTVA', length: 30, url: 'ships/terran/boanerges.png',
-    speed: 125, turn: 80, hull: 38, gun: { damage: 4, range: 350, delay: 1800, speed: 520, bolt: 'fx_bolt_subach' },
+    speed: 132, turn: 80, hull: 38, gun: { damage: 4, range: 350, delay: 1800, speed: 520, bolt: 'fx_bolt_subach' },
     bomb: { damage: 80, range: 800, delay: 21000, speed: 240, bolt: 'fx_bolt_terranhuge' } },
   // Vasudan
   serapis:   { name: 'GVF Serapis', cls: 'Interceptor', faction: 'Vasudan (allied)', length: 15, url: 'ships/vasudan/serapis.png',
-    speed: 200, turn: 170, hull: 13, gun: { damage: 4, range: 410, delay: 1950, speed: 570, bolt: 'fx_bolt_mekhu' } },
+    speed: 168, turn: 185, hull: 13, gun: { damage: 4, range: 410, delay: 1950, speed: 570, bolt: 'fx_bolt_mekhu' } },
   horus:     { name: 'GVF Horus', cls: 'Fighter', faction: 'Vasudan (allied)', length: 14, url: 'ships/vasudan/horus.png',
-    speed: 195, turn: 180, hull: 12, gun: { damage: 3, range: 380, delay: 1800, speed: 560, bolt: 'fx_bolt_mekhu' } },
+    speed: 220, turn: 200, hull: 12, gun: { damage: 3, range: 380, delay: 1800, speed: 560, bolt: 'fx_bolt_mekhu' } },
   tauret:    { name: 'GVF Tauret', cls: 'Fighter', faction: 'Vasudan (allied)', length: 21, url: 'ships/vasudan/tauret.png',
-    speed: 170, turn: 140, hull: 22, gun: { damage: 5, range: 400, delay: 1650, speed: 550, bolt: 'fx_bolt_mekhu' } },
+    speed: 154, turn: 130, hull: 22, gun: { damage: 5, range: 400, delay: 1650, speed: 550, bolt: 'fx_bolt_mekhu' } },
   sekhmet:   { name: 'GVB Sekhmet', cls: 'Bomber', faction: 'Vasudan (allied)', length: 29, url: 'ships/vasudan/sekhmet.png',
-    speed: 140, turn: 95, hull: 34, gun: { damage: 4, range: 360, delay: 1750, speed: 530, bolt: 'fx_bolt_mekhu' },
+    speed: 136, turn: 95, hull: 34, gun: { damage: 4, range: 360, delay: 1750, speed: 530, bolt: 'fx_bolt_mekhu' },
     bomb: { damage: 75, range: 800, delay: 19000, speed: 245, bolt: 'fx_bolt_vasudan' } },
   osiris:    { name: 'GVB Osiris', cls: 'Bomber', faction: 'Vasudan (allied)', length: 30, url: 'ships/vasudan/osiris.png',
-    speed: 120, turn: 85, hull: 30, gun: { damage: 3, range: 340, delay: 1800, speed: 510, bolt: 'fx_bolt_mekhu' },
+    speed: 125, turn: 70, hull: 30, gun: { damage: 3, range: 340, delay: 1800, speed: 510, bolt: 'fx_bolt_mekhu' },
     bomb: { damage: 60, range: 760, delay: 18000, speed: 240, bolt: 'fx_bolt_vasudan' } },
   bakha:     { name: 'GVB Bakha', cls: 'Bomber', faction: 'Vasudan (allied)', length: 24, url: 'ships/vasudan/bakha.png',
-    speed: 145, turn: 100, hull: 28, gun: { damage: 4, range: 360, delay: 1750, speed: 530, bolt: 'fx_bolt_mekhu' },
+    speed: 143, turn: 100, hull: 28, gun: { damage: 4, range: 360, delay: 1750, speed: 530, bolt: 'fx_bolt_mekhu' },
     bomb: { damage: 60, range: 780, delay: 17000, speed: 255, bolt: 'fx_bolt_vasudan' } },
   // Shivan
   mara:      { name: 'SF Mara', cls: 'Fighter', faction: 'Shivan', length: 17, url: 'ships/shivan/mara.png',
-    speed: 195, turn: 165, hull: 15, gun: { damage: 4, range: 400, delay: 1950, speed: 570, bolt: 'fx_bolt_shivanlight' } },
+    speed: 163, turn: 165, hull: 15, gun: { damage: 4, range: 400, delay: 1950, speed: 570, bolt: 'fx_bolt_shivanlight' } },
   manticore: { name: 'SF Manticore', cls: 'Interceptor', faction: 'Shivan', length: 16, url: 'ships/shivan/manticore.png',
-    speed: 210, turn: 155, hull: 12, gun: { damage: 3, range: 390, delay: 1800, speed: 580, bolt: 'fx_bolt_shivanlight' } },
+    speed: 228, turn: 190, hull: 12, gun: { damage: 3, range: 390, delay: 1800, speed: 580, bolt: 'fx_bolt_shivanlight' } },
   basilisk:  { name: 'SF Basilisk', cls: 'Assault fighter', faction: 'Shivan', length: 32, url: 'ships/shivan/basilisk.png',
-    speed: 155, turn: 115, hull: 28, gun: { damage: 6, range: 410, delay: 1750, speed: 550, bolt: 'fx_bolt_shivanlight' } },
+    speed: 146, turn: 115, hull: 28, gun: { damage: 6, range: 410, delay: 1750, speed: 550, bolt: 'fx_bolt_shivanlight' } },
   dragon:    { name: 'SF Dragon', cls: 'Fighter', faction: 'Shivan', length: 18, url: 'ships/shivan/dragon.png',
-    speed: 220, turn: 190, hull: 14, gun: { damage: 4, range: 400, delay: 1800, speed: 580, bolt: 'fx_bolt_shivanlight' } },
+    speed: 182, turn: 210, hull: 14, gun: { damage: 4, range: 400, delay: 1800, speed: 580, bolt: 'fx_bolt_shivanlight' } },
   aeshma:    { name: 'SF Aeshma', cls: 'Assault fighter', faction: 'Shivan', length: 26, url: 'ships/shivan/aeshma.png',
-    speed: 165, turn: 125, hull: 24, gun: { damage: 5, range: 400, delay: 1650, speed: 550, bolt: 'fx_bolt_shivanlight' } },
+    speed: 150, turn: 125, hull: 24, gun: { damage: 5, range: 400, delay: 1650, speed: 550, bolt: 'fx_bolt_shivanlight' } },
   seraphim:  { name: 'SB Seraphim', cls: 'Heavy bomber', faction: 'Shivan', length: 42, url: 'ships/shivan/seraphim.png',
-    speed: 125, turn: 80, hull: 40, gun: { damage: 4, range: 350, delay: 1800, speed: 520, bolt: 'fx_bolt_shivanlight' },
+    speed: 165, turn: 75, hull: 40, gun: { damage: 4, range: 350, delay: 1800, speed: 520, bolt: 'fx_bolt_shivanlight' },
     bomb: { damage: 80, range: 800, delay: 21000, speed: 240, bolt: 'fx_bolt_shivanheavy' } },
   nephilim:  { name: 'SB Nephilim', cls: 'Bomber', faction: 'Shivan', length: 40, url: 'ships/shivan/nephilim.png',
-    speed: 130, turn: 85, hull: 36, gun: { damage: 4, range: 350, delay: 1800, speed: 520, bolt: 'fx_bolt_shivanlight' },
+    speed: 145, turn: 80, hull: 36, gun: { damage: 4, range: 350, delay: 1800, speed: 520, bolt: 'fx_bolt_shivanlight' },
     bomb: { damage: 70, range: 780, delay: 18000, speed: 245, bolt: 'fx_bolt_shivanheavy' } },
   taurvi:    { name: 'SB Taurvi', cls: 'Bomber', faction: 'Shivan', length: 33, url: 'ships/shivan/taurvi.png',
-    speed: 140, turn: 95, hull: 30, gun: { damage: 4, range: 360, delay: 1750, speed: 530, bolt: 'fx_bolt_shivanlight' },
+    speed: 151, turn: 85, hull: 30, gun: { damage: 4, range: 360, delay: 1750, speed: 530, bolt: 'fx_bolt_shivanlight' },
     bomb: { damage: 60, range: 770, delay: 17000, speed: 250, bolt: 'fx_bolt_shivanheavy' } },
   nahema:    { name: 'SB Nahema', cls: 'Bomber', faction: 'Shivan', length: 30, url: 'ships/shivan/nahema.png',
-    speed: 150, turn: 100, hull: 28, gun: { damage: 4, range: 360, delay: 1750, speed: 530, bolt: 'fx_bolt_shivanlight' },
+    speed: 178, turn: 110, hull: 28, gun: { damage: 4, range: 360, delay: 1750, speed: 530, bolt: 'fx_bolt_shivanlight' },
     bomb: { damage: 65, range: 780, delay: 17000, speed: 255, bolt: 'fx_bolt_shivanheavy' } },
 };
 
