@@ -36,10 +36,11 @@ for (const [key, craft] of Object.entries(STRIKECRAFT)) {
 // cores, and the flak burst. Referenced from WEAPONS via bolt/beamTex keys.
 const FX = [
   'beam_sred', 'beam_lred', 'beam_bfred', 'beam_saaa', 'beam_sgreen',
-  'beam_bgreen', 'beam_bfgreen', 'beam_lterslash', 'beam_aaa',
-  'beam_svas', 'beam_bvas', 'beam_superlaser',
+  'beam_bgreen', 'beam_bfgreen', 'beam_lterslash', 'beam_terslash',
+  'beam_vslash', 'beam_aaa', 'beam_svas', 'beam_bvas', 'beam_superlaser',
   'bolt_subach', 'bolt_terranhuge', 'bolt_vasudan', 'bolt_shivan',
   'bolt_mekhu', 'bolt_shivanlight', 'bolt_shivanheavy',
+  'bolt_terranweak', 'bolt_shivanweak',
   'flak_burst',
 ];
 for (const name of FX) IMAGES[`fx_${name}`] = { url: `fx/${name}.png`, angleOffset: 0 };

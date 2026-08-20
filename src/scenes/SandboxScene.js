@@ -636,6 +636,10 @@ export class SandboxScene extends Phaser.Scene {
         const missBy = target.isStrike ? 30 + Math.random() * 40 : size * (0.5 + Math.random() * 0.3);
         beam.off = { x: Math.cos(across) * missBy * sign, y: Math.sin(across) * missBy * sign };
       }
+    } else if (!turret && weapon.slash) {
+      // Bow-mounted slash beams (LTerSlash on a Fenris) rake across the
+      // ship's facing instead of holding the boresight.
+      beam.spinalSweep = (Math.random() < 0.5 ? 1 : -1) * 8 * DEG;
     }
     this.beams.push(beam);
     sfx('beamCharge');
@@ -662,6 +666,10 @@ export class SandboxScene extends Phaser.Scene {
       let dir;
       if (!beam.turret) {
         dir = ship.facing;
+        if (beam.spinalSweep) {
+          const frac = Phaser.Math.Clamp((beam.elapsed - beam.charge) / (BEAM_RAMP + beam.hold), 0, 1);
+          dir += beam.spinalSweep * (frac * 2 - 1);
+        }
       } else if (target.active) {
         let ox = 0, oy = 0;
         if (beam.slashFrom) {
