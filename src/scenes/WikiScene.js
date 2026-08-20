@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { SHIPS, WEAPONS, armamentSummary, complementSummary } from '../ships.js';
-import { ensureStarfield } from '../fx.js';
+import { ensureStarfield, TEXT_RES } from '../fx.js';
 
 const HP_COLORS = { spinal: 0xffb454, turret: 0x6fb7ff };
 
@@ -20,11 +20,11 @@ export class WikiScene extends Phaser.Scene {
     this.scale.on('resize', (s) => this.bg.setSize(s.width, s.height));
 
     this.add.text(24, 20, 'SHIP REGISTRY', {
-      fontFamily: 'monospace', fontSize: 24, color: '#d8e2ee', letterSpacing: 4,
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 24, color: '#d8e2ee', letterSpacing: 4,
     }).setDepth(5);
 
     const back = this.add.text(w() - 24, 22, '← TITLE', {
-      fontFamily: 'monospace', fontSize: 16, color: '#9fd8ff',
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 16, color: '#9fd8ff',
     }).setOrigin(1, 0).setDepth(5).setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => this.scene.start('title'));
     this.input.keyboard.on('keydown-ESC', () => this.scene.start('title'));
@@ -75,20 +75,20 @@ export class WikiScene extends Phaser.Scene {
 
     const color = ship.hostile ? '#ff8a7a' : '#d8e2ee';
     c.add(this.add.text(330, 20, `${ship.name.toUpperCase()}`, {
-      fontFamily: 'monospace', fontSize: 18, color, letterSpacing: 2,
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 18, color, letterSpacing: 2,
     }));
     c.add(this.add.text(330, 44, `${ship.cls} · ${ship.faction}`, {
-      fontFamily: 'monospace', fontSize: 12, color: '#6fb7ff',
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 12, color: '#6fb7ff',
     }));
     const complement = complementSummary(ship);
     c.add(this.add.text(330, 66,
       `${ship.length} m   HULL ${ship.hull}   SPEED ${ship.speed}   TURN ${ship.turn}°/s\n` +
       `ARMAMENT ${armamentSummary(ship)}` +
       (complement ? `\nAIR GROUP ${complement}` : ''), {
-        fontFamily: 'monospace', fontSize: 12, color: '#8593a6',
+        fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 12, color: '#8593a6',
       }));
     c.add(this.add.text(330, complement ? 118 : 106, ship.desc, {
-      fontFamily: 'monospace', fontSize: 12, color: '#aab6c6',
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 12, color: '#aab6c6',
       wordWrap: { width: this.scale.width - 400 },
     }));
     return c;

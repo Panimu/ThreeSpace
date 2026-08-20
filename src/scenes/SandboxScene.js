@@ -3,7 +3,7 @@ import { IMAGES } from '../manifest.js';
 import { SHIPS, STRIKECRAFT, WEAPONS } from '../ships.js';
 import {
   ensureNebula, ensureBeamTextures, ensureStarfield, ensureBoltTexture,
-  factionColor, beamPalette, sfx,
+  factionColor, beamPalette, sfx, TEXT_RES,
 } from '../fx.js';
 
 // FS2 beam envelope: the muzzle charges visibly, then the beam erupts and
@@ -919,12 +919,12 @@ export class SandboxScene extends Phaser.Scene {
     this.input.addPointer(3);
 
     this.hud = this.add.text(0, 0, '', {
-      fontFamily: 'monospace', fontSize: 13, color: '#9fd8ff',
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 13, color: '#9fd8ff',
     }).setDepth(21);
     this.uiPlace(this.hud, () => ({ x: 52, y: 12 }));
 
     this.banner = this.add.text(0, 0, '', {
-      fontFamily: 'monospace', fontSize: 30, color: '#ffffff', align: 'center',
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 30, color: '#ffffff', align: 'center',
     }).setOrigin(0.5).setDepth(30);
     this.uiPlace(this.banner, (w, h) => ({ x: w / 2, y: h / 2 - 40 }));
 
@@ -935,7 +935,7 @@ export class SandboxScene extends Phaser.Scene {
 
     const label = (str, anchor, opts = {}) => {
       const t = this.add.text(0, 0, str, {
-        fontFamily: 'monospace', fontSize: opts.size ?? 13, color: opts.color ?? '#9fd8ff',
+        fontFamily: 'monospace', resolution: TEXT_RES, fontSize: opts.size ?? 13, color: opts.color ?? '#9fd8ff',
       }).setOrigin(opts.ox ?? 0.5, 0.5).setDepth(22);
       this.uiPlace(t, anchor);
       return t;

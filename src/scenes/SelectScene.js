@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { SHIPS } from '../ships.js';
-import { ensureStarfield } from '../fx.js';
+import { ensureStarfield, TEXT_RES } from '../fx.js';
 
 // Fleet setup: tap ships to add them to a side (up to FLEET_MAX each, tap
 // again to remove). The first pick on your side is the ship you start conning.
@@ -24,29 +24,29 @@ export class SelectScene extends Phaser.Scene {
       .setOrigin(0).setScrollFactor(0);
 
     this.add.text(this.scale.width / 2, 18, 'FLEET SETUP', {
-      fontFamily: 'monospace', fontSize: 22, color: '#d8e2ee', letterSpacing: 4,
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 22, color: '#d8e2ee', letterSpacing: 4,
     }).setOrigin(0.5, 0);
     this.add.text(this.scale.width / 2, 44, `tap to add ships — up to ${FLEET_MAX} per side`, {
-      fontFamily: 'monospace', fontSize: 11, color: '#5a6678',
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 11, color: '#5a6678',
     }).setOrigin(0.5, 0);
 
     // Random battle row: pick a faction, get two matched fleets.
     this.add.text(this.scale.width / 2 - 200, 66, 'RANDOM BATTLE', {
-      fontFamily: 'monospace', fontSize: 12, color: '#8593a6', letterSpacing: 2,
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 12, color: '#8593a6', letterSpacing: 2,
     }).setOrigin(1, 0.5).setPosition(this.scale.width / 2 - 148, 78);
     Object.entries(FACTIONS).forEach(([key, f], i) => {
       const bx = this.scale.width / 2 - 130 + i * 96;
       const zone = this.add.rectangle(bx + 44, 78, 88, 26, 0x11161f, 0.9)
         .setStrokeStyle(1, 0x3a4a62).setInteractive({ useHandCursor: true });
       this.add.text(bx + 44, 78, f.label, {
-        fontFamily: 'monospace', fontSize: 12, color: '#9fd8ff', letterSpacing: 1,
+        fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 12, color: '#9fd8ff', letterSpacing: 1,
       }).setOrigin(0.5);
       zone.on('pointerover', () => zone.setStrokeStyle(1, 0x6fb7ff));
       zone.on('pointerout', () => zone.setStrokeStyle(1, 0x3a4a62));
       zone.on('pointerdown', () => this.randomBattle(key));
     });
     const back = this.add.text(24, 24, '← TITLE', {
-      fontFamily: 'monospace', fontSize: 15, color: '#9fd8ff',
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 15, color: '#9fd8ff',
     }).setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => this.scene.start('title'));
     this.input.keyboard.on('keydown-ESC', () => this.scene.start('title'));
@@ -62,7 +62,7 @@ export class SelectScene extends Phaser.Scene {
     const launch = this.add.rectangle(this.scale.width / 2, this.scale.height - 44, 220, 48, 0x11161f, 0.95)
       .setStrokeStyle(1, 0xffb454).setInteractive({ useHandCursor: true }).setDepth(5);
     this.add.text(launch.x, launch.y, 'LAUNCH', {
-      fontFamily: 'monospace', fontSize: 20, color: '#ffb454', letterSpacing: 4,
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 20, color: '#ffb454', letterSpacing: 4,
     }).setOrigin(0.5).setDepth(6);
     const go = () => {
       if (!this.picks.player.length || !this.picks.enemy.length) return;
@@ -104,14 +104,14 @@ export class SelectScene extends Phaser.Scene {
   makeColumn(title, keys, x, side) {
     this.titleTexts ??= {};
     this.titleTexts[side] = this.add.text(x, 100, title, {
-      fontFamily: 'monospace', fontSize: 14, color: '#8593a6', letterSpacing: 2,
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 14, color: '#8593a6', letterSpacing: 2,
     }).setOrigin(0.5, 0);
     const top = 126;
     const rowH = Math.min(28, (this.scale.height - top - 100) / keys.length);
     keys.forEach((key, i) => {
       const ship = SHIPS[key];
       const label = this.add.text(x, top + i * rowH, '', {
-        fontFamily: 'monospace', fontSize: 14,
+        fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 14,
         color: ship.hostile ? '#c98a80' : '#aab6c6',
       }).setOrigin(0.5, 0).setInteractive({ useHandCursor: true });
       label.on('pointerdown', () => this.toggle(side, key));

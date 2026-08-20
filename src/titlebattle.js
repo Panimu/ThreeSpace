@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { IMAGES } from './manifest.js';
-import { SHIPS, WEAPONS } from './ships.js';
+import { SHIPS, STRIKECRAFT, WEAPONS } from './ships.js';
 import { factionColor, beamPalette } from './fx.js';
 
 // Attract-mode duel for the title screen: two random capitals (no balancing)
@@ -19,6 +19,7 @@ export class TitleBattle {
     this.respawnAt = [0, 0];
     this.bolts = [];
     this.beams = [];
+    this.fighters = [[], []];
     this.view = { scale: 0.4, x: 0, y: 0, init: false };
     this.spawn(0, { x: 700, y: 0 });
     this.spawn(1, { x: -700, y: 0 });
@@ -26,7 +27,11 @@ export class TitleBattle {
 
   spawn(side, foeAt) {
     const keys = Object.keys(SHIPS);
-    const key = keys[(Math.random() * keys.length) | 0];
+    // Bias toward carriers so the backdrop regularly shows fighter launches.
+    const carriers = keys.filter((k) => SHIPS[k].hangar);
+    const key = Math.random() < 0.45
+      ? carriers[(Math.random() * carriers.length) | 0]
+      : keys[(Math.random() * keys.length) | 0];
     const spec = SHIPS[key];
     const bearing = Math.random() * Math.PI * 2;
     const x = foeAt.x + Math.cos(bearing) * 1500;
@@ -45,6 +50,31 @@ export class TitleBattle {
       size: Math.max(img.displayWidth, img.displayHeight),
       dying: false,
     };
+    if (spec.hangar) {
+      this.ships[side].bay = spec.hangar.flatMap(({ craft, wings }) => Array(wings).fill(craft));
+      this.ships[side].nextLaunch = this.scene.time.now + 2500 + Math.random() * 3000;
+    }
+  }
+
+  launchWing(ship, side, time) {
+    const key = ship.bay.shift();
+    const spec = STRIKECRAFT[key];
+    const cos = Math.cos(ship.facing), sin = Math.sin(ship.facing);
+    const bow = ship.img.displayWidth * 0.3;
+    for (let i = 0; i < 3; i++) {
+      const lat = (i - 1) * 26;
+      const img = this.scene.add.image(
+        ship.img.x + cos * bow - sin * lat,
+        ship.img.y + sin * bow + cos * lat, `ship_${key}`);
+      img.setScale(IMAGES[`ship_${key}`].targetLength / img.width).setRotation(ship.facing);
+      this.root.add(img);
+      this.fighters[side].push({
+        img, spec, isFighter: true, hull: spec.hull, facing: ship.facing,
+        size: 20, jitter: 0.9 + Math.random() * 0.2,
+        nextGun: time + Math.random() * 1500, retarget: 0,
+      });
+    }
+    ship.nextLaunch = time + 12000;
   }
 
   hardpointPos(ship, point) {
@@ -129,10 +159,27 @@ export class TitleBattle {
   }
 
   damage(target, dmg, x, y) {
-    if (!target || target.dying) return;
+    if (!target || target.dying || !target.img.active) return;
     target.hull -= dmg;
-    this.burst(x, y, 3);
-    if (target.hull <= 0) this.kill(target);
+    this.burst(x, y, target.isFighter ? 2 : 3);
+    if (target.hull <= 0) {
+      if (target.isFighter) {
+        this.burst(target.img.x, target.img.y, 5);
+        target.img.destroy();
+      } else {
+        this.kill(target);
+      }
+    }
+  }
+
+  nearestFighter(side, from, maxRange) {
+    let best = null, bd = maxRange;
+    for (const f of this.fighters[side]) {
+      if (!f.img.active) continue;
+      const d = Phaser.Math.Distance.Between(from.x, from.y, f.img.x, f.img.y);
+      if (d < bd) { bd = d; best = f; }
+    }
+    return best;
   }
 
   kill(ship) {
@@ -196,11 +243,73 @@ export class TitleBattle {
       }
       if (ship.dying) continue;
       this.steer(ship, foe && !foe.dying ? foe : null, dt);
-      if (foe && !foe.dying) {
-        ship.spec.hardpoints.forEach((point, i) => {
-          if (time >= ship.next[i]) this.fire(ship, foe, point, i, time);
-        });
+      ship.spec.hardpoints.forEach((point, i) => {
+        if (time < ship.next[i]) return;
+        const weapon = WEAPONS[point.fitted];
+        // Anti-fighter mounts pick off the enemy air wing; the rest need
+        // the enemy capital alive.
+        let target = foe && !foe.dying ? foe : null;
+        if (weapon.anti) {
+          target = this.nearestFighter(1 - side, ship.img, weapon.range + 200) ?? target;
+        }
+        if (target) this.fire(ship, target, point, i, time);
+      });
+      // Carrier hangars cycle wings into the fight.
+      if (ship.bay?.length && time > ship.nextLaunch && this.fighters[side].length < 6) {
+        this.launchWing(ship, side, time);
       }
+    }
+
+    // Fighters: dogfight the enemy wing, strafe the enemy capital otherwise.
+    for (const side of [0, 1]) {
+      const foeShip = this.ships[1 - side];
+      this.fighters[side] = this.fighters[side].filter((f) => {
+        if (!f.img.active) return false;
+        if (time > f.retarget || !(f.target?.img.active && !f.target.dying)) {
+          f.retarget = time + 500 + Math.random() * 400;
+          f.target = this.nearestFighter(1 - side, f.img, Infinity)
+            ?? (foeShip && !foeShip.dying ? foeShip : null);
+        }
+        let want = f.facing;
+        if (f.wp && time < f.wp.until) {
+          want = Phaser.Math.Angle.Between(f.img.x, f.img.y, f.wp.x, f.wp.y);
+        } else if (f.target) {
+          f.wp = null;
+          want = Phaser.Math.Angle.Between(f.img.x, f.img.y, f.target.img.x, f.target.img.y);
+          const d = Phaser.Math.Distance.Between(f.img.x, f.img.y, f.target.img.x, f.target.img.y);
+          const aligned = Math.abs(Phaser.Math.Angle.Wrap(want - f.facing)) < 20 * DEG;
+          if (d < 380 && aligned && time >= f.nextGun) {
+            f.nextGun = time + 1600 + Math.random() * 900;
+            const ang = want + (Math.random() - 0.5) * 6 * DEG;
+            const img = this.scene.add.image(f.img.x, f.img.y, f.spec.gun.bolt)
+              .setBlendMode(Phaser.BlendModes.ADD).setRotation(ang + Math.PI);
+            img.setDisplaySize(22, Math.max(5, 22 * (img.height / img.width)));
+            this.root.add(img);
+            this.bolts.push({
+              img, target: f.target,
+              vx: Math.cos(ang) * 520, vy: Math.sin(ang) * 520,
+              dmg: f.spec.gun.damage, life: 0.75,
+            });
+          }
+          const breakAt = f.target.isFighter ? 70 : f.target.size * 0.5;
+          if (d < breakAt) {
+            const away = f.facing + (Math.random() < 0.5 ? 1 : -1) * (100 * DEG);
+            f.wp = { x: f.img.x + Math.cos(away) * 380, y: f.img.y + Math.sin(away) * 380, until: time + 1400 };
+          }
+        } else {
+          // Nothing to fight: hold near home (or the battle's center).
+          const home = this.ships[side]?.img.active ? this.ships[side].img : this.view;
+          if (Phaser.Math.Distance.Between(f.img.x, f.img.y, home.x, home.y) > 600) {
+            want = Phaser.Math.Angle.Between(f.img.x, f.img.y, home.x, home.y);
+          }
+        }
+        f.facing = Phaser.Math.Angle.RotateTo(f.facing, want, 2.6 * dt);
+        const sp = f.spec.speed * 0.9 * f.jitter;
+        f.img.x += Math.cos(f.facing) * sp * dt;
+        f.img.y += Math.sin(f.facing) * sp * dt;
+        f.img.setRotation(f.facing);
+        return true;
+      });
     }
 
     // Bolts: straight flight, approximate radius hit against their target.

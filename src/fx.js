@@ -165,3 +165,7 @@ export function beamPalette(spec) {
     ? { outer: 0xff3822, mid: 0xffb066 }
     : { outer: 0x46ff5e, mid: 0xe8ffb0 };
 }
+
+// Text render resolution: Phaser rasterizes text at CSS-pixel resolution by
+// default, which looks soft on retina iOS. Render at devicePixelRatio (capped).
+export const TEXT_RES = Math.min(3, (typeof window !== 'undefined' && window.devicePixelRatio) || 1);

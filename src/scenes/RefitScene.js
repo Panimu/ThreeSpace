@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { SHIPS, WEAPONS, armamentSummary } from '../ships.js';
 import { cycleFit } from '../refit.js';
-import { ensureStarfield } from '../fx.js';
+import { ensureStarfield, TEXT_RES } from '../fx.js';
 
 const HP_COLORS = { spinal: 0xffb454, turret: 0x6fb7ff };
 
@@ -22,17 +22,17 @@ export class RefitScene extends Phaser.Scene {
       this.scale.width, this.scale.height, 48, 48, 0, 0, 0x6fb7ff, 0.05);
 
     this.add.text(24, 20, 'REFIT BAY', {
-      fontFamily: 'monospace', fontSize: 24, color: '#d8e2ee', letterSpacing: 4,
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 24, color: '#d8e2ee', letterSpacing: 4,
     }).setDepth(5);
     const back = this.add.text(this.scale.width - 24, 22, '← TITLE', {
-      fontFamily: 'monospace', fontSize: 16, color: '#9fd8ff',
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 16, color: '#9fd8ff',
     }).setOrigin(1, 0).setDepth(5).setInteractive({ useHandCursor: true });
     back.on('pointerdown', () => this.scene.start('title'));
     this.input.keyboard.on('keydown-ESC', () => this.scene.start('title'));
 
     const mkArrow = (x, label, dir) => {
       const t = this.add.text(x, this.scale.height / 2, label, {
-        fontFamily: 'monospace', fontSize: 42, color: '#9fd8ff',
+        fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 42, color: '#9fd8ff',
       }).setOrigin(0.5).setDepth(5).setInteractive({ useHandCursor: true });
       t.on('pointerdown', () => { this.index = (this.index + dir + this.keys.length) % this.keys.length; this.showShip(); });
     };
@@ -61,15 +61,15 @@ export class RefitScene extends Phaser.Scene {
     this.shipLayer.add([silhouette, sprite]);
 
     this.shipLayer.add(this.add.text(cx, 64, `${ship.name.toUpperCase()} — ${ship.cls.toUpperCase()}`, {
-      fontFamily: 'monospace', fontSize: 20, color: '#d8e2ee', letterSpacing: 2,
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 20, color: '#d8e2ee', letterSpacing: 2,
     }).setOrigin(0.5, 0));
     this.shipLayer.add(this.add.text(cx, 90, 'TAP A MOUNT TO REFIT — saved to this browser', {
-      fontFamily: 'monospace', fontSize: 12, color: '#8593a6',
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 12, color: '#8593a6',
     }).setOrigin(0.5, 0));
 
     this.armamentText = this.add.text(cx, this.scale.height - 56,
       `HULL ${ship.hull}   SPEED ${ship.speed}   TURN ${ship.turn}°/s\n${armamentSummary(ship)}`, {
-        fontFamily: 'monospace', fontSize: 14, color: '#9fd8ff', align: 'center',
+        fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 14, color: '#9fd8ff', align: 'center',
       }).setOrigin(0.5, 0);
     this.shipLayer.add(this.armamentText);
 
@@ -83,7 +83,7 @@ export class RefitScene extends Phaser.Scene {
       const dot = this.add.circle(mx, my, 3, color, 1);
       const side = mx >= cx ? 1 : -1;
       const label = this.add.text(mx + side * 22, my, WEAPONS[point.fitted].name, {
-        fontFamily: 'monospace', fontSize: 12, color: '#d8e2ee',
+        fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 12, color: '#d8e2ee',
         backgroundColor: '#10151fdd', padding: { x: 6, y: 3 },
       }).setOrigin(side > 0 ? 0 : 1, 0.5);
       ring.on('pointerdown', () => {
