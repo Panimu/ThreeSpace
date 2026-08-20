@@ -27,41 +27,32 @@ export class TitleScene extends Phaser.Scene {
     // An endless, silent capital duel plays out behind the menu.
     this.battle = new TitleBattle(this);
 
-    // Layout scales with the narrow axis so portrait iPhones don't overflow;
-    // an orientation change re-lays everything out via a debounced restart.
+    // Name, buttons, version — nothing else competing with the battle behind.
+    // Layout scales with the narrow axis so portrait phones never overflow; an
+    // orientation change re-lays it out via a debounced restart.
     const narrow = Math.min(w(), 520);
     const titleSize = Math.min(56, Math.floor(narrow / 8));
-    const titleY = h() * 0.24;
+    const buttons = ['CAMPAIGN', 'SANDBOX', 'REFIT', 'WIKI'];
+    const gap = Math.min(62, Math.max(52, h() / 11));
+
+    // Centre the whole stack — title plus buttons — in the screen.
+    const stackH = titleSize + 28 + gap * (buttons.length - 1) + 50;
+    const titleY = Math.max(titleSize * 0.7, (h() - stackH) / 2);
     this.add.text(w() / 2, titleY, 'THREESPACE', {
       fontFamily: 'monospace', resolution: TEXT_RES, fontSize: titleSize, fontStyle: 'bold',
       color: '#d8e2ee', letterSpacing: Math.max(3, Math.floor(titleSize / 8)),
     }).setOrigin(0.5);
-    this.add.text(w() / 2, titleY + titleSize * 0.8, 'CAPITAL COMMAND', {
-      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: Math.min(16, narrow / 24),
-      color: '#6fb7ff', letterSpacing: 5,
-    }).setOrigin(0.5);
-    const blurb = this.add.text(w() / 2, titleY + titleSize * 0.8 + 26,
-      'A FreeSpace-inspired capital ship sandbox: take the helm, trade beam fire ' +
-      'at range, and break the enemy down pixel by pixel — mount by mount.', {
-        fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 12, color: '#8593a6',
-        align: 'center', lineSpacing: 5, wordWrap: { width: Math.min(560, w() - 36) },
-      }).setOrigin(0.5, 0);
+
+    const buttonsTop = titleY + titleSize * 0.6 + 52;
+    const targets = { CAMPAIGN: 'campaign', SANDBOX: 'select', REFIT: 'refit', WIKI: 'wiki' };
+    buttons.forEach((label, i) => {
+      this.makeButton(w() / 2, buttonsTop + gap * i, label,
+        () => this.scene.start(targets[label]));
+    });
+
     this.add.text(w() - 12, h() - 10, `v${version}`, {
       fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 11, color: '#5a6678',
     }).setOrigin(1, 1);
-
-    const buttonsTop = Math.max(blurb.y + blurb.height + 24, h() * 0.46);
-    const gap = Math.min(58, (h() - buttonsTop - 40) / 4);
-    this.makeButton(w() / 2, buttonsTop, 'CAMPAIGN', () => this.scene.start('campaign'));
-    this.makeButton(w() / 2, buttonsTop + gap, 'SANDBOX', () => this.scene.start('select'));
-    this.makeButton(w() / 2, buttonsTop + gap * 2, 'REFIT', () => this.scene.start('refit'));
-    this.makeButton(w() / 2, buttonsTop + gap * 3, 'WIKI', () => this.scene.start('wiki'));
-
-    this.add.text(w() / 2, h() - 8,
-      'Ship & effect art: original FS2-style sprite sheets (project assets)', {
-        fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 10, color: '#5a6678',
-        align: 'center', wordWrap: { width: w() - 120 },
-      }).setOrigin(0.5, 1);
 
     this.input.keyboard.on('keydown-ENTER', () => this.scene.start('campaign'));
 
