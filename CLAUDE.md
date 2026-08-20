@@ -24,9 +24,14 @@ There is no test suite or linter yet.
 - Scenes: `TitleScene` (menu over a live attract battle, preloads all assets) →
   `SelectScene` (fleet setup: up to 3 capitals per side, or a random faction
   battle) → `SandboxScene` (fleet battle) → `AfterActionScene` (battle report),
-  plus `WikiScene` (ship registry) and `RefitScene` (wireframe hardpoint
-  refitting; per-browser persistence via `src/refit.js`, which mutates the
-  SHIPS catalog in place).
+  plus `WikiScene` and `RefitScene` (wireframe hardpoint refitting; per-browser
+  persistence via `src/refit.js`, which mutates the SHIPS catalog in place).
+- `WikiScene` is tabbed: CONTROLS (an annotated diagram of the battle screen,
+  drawn from the `HUD_PARTS` table that also writes its legend — keep the two
+  in step by editing that one table), SHIPS, CRAFT, WEAPONS and ASSETS
+  (provenance and licensing). Entries measure their own text and size their
+  card to fit; the scrolling container is masked so nothing runs under the
+  tabs.
 - **Campaign**: `src/campaign.js` is the mission graph — the FS2 single-player
   campaign (28 main operations plus two optional SOC loops) rebuilt around the
   capital ships actually present in each retail mission. `CampaignScene` is the
