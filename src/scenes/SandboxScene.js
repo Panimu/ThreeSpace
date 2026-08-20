@@ -1,6 +1,8 @@
 import Phaser from 'phaser';
 import { IMAGES } from '../manifest.js';
 import { SHIPS, STRIKECRAFT, WEAPONS } from '../ships.js';
+import { assignName } from '../names.js';
+import { Tactical } from '../tactical.js';
 import {
   ensureNebula, ensureBeamTextures, ensureStarfield, ensureBoltTexture,
   factionColor, beamPalette, sfx, TEXT_RES,
@@ -19,7 +21,7 @@ const WORLD_H = 4000;
 const DEG = Math.PI / 180;
 const BATTERY_ARC = 14 * DEG;
 const ENGAGE_RANGE = 1000; // enemy AI's preferred gun range
-const MM_W = 170; // minimap width; height follows world aspect
+const MM_MAX = 170; // minimap width ceiling; narrow screens get less
 
 // UI lives on a second camera parked far outside the world so neither camera
 // ever renders the other's objects — pinch-zooming the battle never touches
@@ -45,6 +47,26 @@ const LAUNCH_EVERY = 9000;
 
 // Wing orders — the whole friendly air group follows one standing order.
 const ORDERS = ['engage', 'strike', 'screen'];
+
+// Fleet orders for the capitals you are NOT conning: hold station on the
+// flag, close and fight independently, or stay out at beam range.
+const FLEET_ORDERS = ['form', 'engage', 'standoff'];
+const STANDOFF_RANGE = 1500;
+
+// A tap is a press that neither travels nor lingers; anything else is a
+// camera gesture. Taps designate targets.
+const TAP_SLOP = 14;
+const TAP_MS = 400;
+
+// Mount coverage (Starsector-style): a turret can only fire into the
+// hemisphere its hull side faces, so a bow-on approach brings fewer guns to
+// bear than a broadside. Centreline mounts see everything but dead astern.
+const ARC_BEAM = 100 * DEG;   // port/starboard mounts, either side of abeam
+const ARC_CENTRE = 155 * DEG; // centreline mounts, either side of the bow
+
+// Order-row and contact read-out geometry.
+const ORDER_X = 38;
+const CONTACT_H = 78;
 
 export class SandboxScene extends Phaser.Scene {
   constructor() {
@@ -75,6 +97,11 @@ export class SandboxScene extends Phaser.Scene {
     this.strikeGroup = { A: this.physics.add.group(), B: this.physics.add.group() };
     this.fleets = { A: [], B: [] };
     this.strike = { A: [], B: [] };
+    // Battle record — the after-action report is built from this, and the
+    // campaign will carry it forward as persistent fleet damage.
+    this.usedNames = new Set();
+    this.craftLost = { A: 0, B: 0 };
+    this.startedAt = this.time.now;
 
     const onShot = (a, b) => this.onShotHit(a, b);
     this.physics.add.overlap(this.shots.A, this.capGroup.B, onShot);
@@ -115,6 +142,14 @@ export class SandboxScene extends Phaser.Scene {
     this.energy = { wpn: 2, eng: 2, rep: 2, pool: 8 };
     this.helm = { steer: this.con.facing, throttle: 0, engaged: false };
     this.wingOrder = 'engage';
+    this.fleetOrder = 'form';
+
+    // Tactical picture: the contact you have designated, and enemy beams
+    // currently charging on your fleet.
+    this.lockedTarget = null;
+    this.threats = [];
+    this.BATTERY_ARC = BATTERY_ARC;
+    this.tactical = new Tactical(this);
 
     this.createMinimap();
     this.createControls();
@@ -122,6 +157,7 @@ export class SandboxScene extends Phaser.Scene {
 
     const onResize = (s) => {
       this.uiCam.setSize(s.width, s.height);
+      this.sizeMinimap();
       for (const { obj, anchor } of this.uiAnchors) {
         const pos = anchor(s.width, s.height);
         obj.setPosition(UIX + pos.x, pos.y);
@@ -166,19 +202,26 @@ export class SandboxScene extends Phaser.Scene {
     }
   }
 
+  // The minimap and the contact box under it share a column whose width
+  // shrinks on portrait phones so the HUD still has room beside them.
+  sizeMinimap() {
+    this.mmW = Math.round(Phaser.Math.Clamp(this.scale.width * 0.3, 112, MM_MAX));
+    this.mmH = Math.round(this.mmW * (WORLD_H / WORLD_W));
+  }
+
   createMinimap() {
-    this.mmH = Math.round(MM_W * (WORLD_H / WORLD_W));
+    this.sizeMinimap();
     this.minimap = this.add.graphics().setDepth(15);
-    this.uiPlace(this.minimap, (w) => ({ x: w - MM_W - 14, y: 14 }));
+    this.uiPlace(this.minimap, (w) => ({ x: w - this.mmW - 14, y: 14 }));
   }
 
   drawMinimap() {
     const g = this.minimap;
-    const px = (x) => (x / WORLD_W) * MM_W;
+    const px = (x) => (x / WORLD_W) * this.mmW;
     const py = (y) => (y / WORLD_H) * this.mmH;
     g.clear();
-    g.fillStyle(0x0a0d14, 0.72).fillRect(0, 0, MM_W, this.mmH);
-    g.lineStyle(1, 0x2b3a52, 1).strokeRect(0, 0, MM_W, this.mmH);
+    g.fillStyle(0x0a0d14, 0.72).fillRect(0, 0, this.mmW, this.mmH);
+    g.lineStyle(1, 0x2b3a52, 1).strokeRect(0, 0, this.mmW, this.mmH);
     const view = this.cameras.main.worldView;
     g.lineStyle(1, 0x3a4a62, 0.9).strokeRect(px(view.x), py(view.y), px(view.width), py(view.height));
     const blip = (ship, color, ring) => {
@@ -243,6 +286,9 @@ export class SandboxScene extends Phaser.Scene {
     ship.body.setSize(ship.width * 0.75, ship.height * 0.75, true);
     ship.spec = spec;
     ship.side = side;
+    ship.shipName = assignName(spec, this.usedNames);
+    // Per-hull battle record for the after-action report.
+    ship.stats = { dealt: 0, taken: 0, mountsLost: 0 };
     ship.hull = spec.hull;
     ship.facing = facing;
     ship.throttle = 0;
@@ -469,6 +515,7 @@ export class SandboxScene extends Phaser.Scene {
   }
 
   killStrike(craft) {
+    this.craftLost[craft.side] += 1;
     this.burst(craft.x, craft.y, 7);
     if (Math.random() < 0.4) sfx('boom');
     craft.destroy();
@@ -513,6 +560,7 @@ export class SandboxScene extends Phaser.Scene {
       if (Math.hypot(reg.cx - lx, reg.cy - ly) > reg.r + spread + 6) return;
       if (this.countOpaque(tex, reg) / ship.mountBaseline[i] < 0.55) {
         ship.mountDisabled[i] = true;
+        ship.stats.mountsLost += 1;
         const pos = this.hardpointPos(ship, point);
         this.burst(pos.x, pos.y, 14);
         sfx('boom');
@@ -575,6 +623,7 @@ export class SandboxScene extends Phaser.Scene {
     }
     shot.damage = weapon.damage;
     shot.isShot = true;
+    shot.owner = ship;
     shot.burstFx = isFlak;
     this.physics.velocityFromRotation(angle, weapon.speed, shot.body.velocity);
     this.time.delayedCall((weapon.range / weapon.speed) * 1000 + 250, () => shot.destroy());
@@ -748,7 +797,10 @@ export class SandboxScene extends Phaser.Scene {
           this.cameras.main.shake(160, 0.004);
         }
         const tick = weapon.damage * (delta / (BEAM_RAMP + beam.hold));
+        const landed = Math.min(tick, Math.max(0, target.hull));
         target.hull -= tick;
+        if (ship.stats && !target.isStrike) ship.stats.dealt += landed;
+        if (target.stats) target.stats.taken += landed;
         beam.pixelPool += tick;
         if (beam.pixelPool > 26 && target.damageCanvas) {
           this.applyPixelDamage(target, endX, endY, beam.pixelPool);
@@ -768,6 +820,131 @@ export class SandboxScene extends Phaser.Scene {
     });
   }
 
+  // ---- gunnery geometry --------------------------------------------------
+
+  // A mount's coverage, in bearings relative to the bow. Hull-side mounts
+  // cover their own hemisphere; centreline mounts see everything but astern.
+  mountArc(point) {
+    if (Math.abs(point.x) < 0.06) return { centre: 0, half: ARC_CENTRE };
+    return { centre: (point.x > 0 ? 1 : -1) * 90 * DEG, half: ARC_BEAM };
+  }
+
+  // Can this mount train on that point? Bow-on approaches mask the broadside.
+  mountBears(ship, point, tx, ty) {
+    const pos = this.hardpointPos(ship, point);
+    const arc = this.mountArc(point);
+    const bearing = Phaser.Math.Angle.Between(pos.x, pos.y, tx, ty);
+    return Math.abs(Phaser.Math.Angle.Wrap(bearing - (ship.facing + arc.centre))) <= arc.half;
+  }
+
+  // How many live mounts could actually shoot the given contact right now —
+  // the number that makes positioning legible on the target read-out.
+  bearingCount(ship, target) {
+    if (!ship?.active || !target?.active) return { bearing: 0, live: 0 };
+    let bearing = 0, live = 0;
+    ship.spec.hardpoints.forEach((point, i) => {
+      if (ship.mountDisabled[i]) return;
+      live += 1;
+      const weapon = WEAPONS[point.fitted];
+      const pos = this.hardpointPos(ship, point);
+      if (Phaser.Math.Distance.Between(pos.x, pos.y, target.x, target.y) > weapon.range) return;
+      if (weapon.type === 'spinal') {
+        const aim = Phaser.Math.Angle.Between(ship.x, ship.y, target.x, target.y);
+        if (Math.abs(Phaser.Math.Angle.Wrap(aim - ship.facing)) <= BATTERY_ARC) bearing += 1;
+      } else if (this.mountBears(ship, point, target.x, target.y)) {
+        bearing += 1;
+      }
+    });
+    return { bearing, live };
+  }
+
+  // Reach of the longest live gun, and of the bow battery — drawn as the
+  // weapon envelope on the tactical overlay.
+  longestRange(ship) {
+    let best = 0;
+    ship.spec.hardpoints.forEach((point, i) => {
+      if (ship.mountDisabled[i]) return;
+      best = Math.max(best, WEAPONS[point.fitted].range);
+    });
+    return best;
+  }
+
+  batteryRange(ship) {
+    let best = 0;
+    ship.spec.hardpoints.forEach((point, i) => {
+      if (ship.mountDisabled[i] || WEAPONS[point.fitted].type !== 'spinal') return;
+      best = Math.max(best, WEAPONS[point.fitted].range);
+    });
+    return best;
+  }
+
+  // ---- target designation -------------------------------------------------
+
+  // A tap on the battle picks the contact under the finger; tapping it again
+  // (or tapping empty space) releases the lock and returns guns to auto.
+  tryLockTarget(p) {
+    const world = this.cameras.main.getWorldPoint(p.x, p.y);
+    const slop = 44 / this.cameras.main.zoom;
+    let best = null, bestD = Infinity;
+    for (const contact of [...this.fleets.B, ...this.strike.B]) {
+      if (!contact.active || contact.dying) continue;
+      const reach = Math.max(contact.displayWidth, contact.displayHeight) * 0.6 + slop;
+      const d = Phaser.Math.Distance.Between(world.x, world.y, contact.x, contact.y);
+      if (d < reach && d < bestD) { bestD = d; best = contact; }
+    }
+    this.lockedTarget = best && best !== this.lockedTarget ? best : null;
+    if (this.lockedTarget) sfx('laser');
+  }
+
+  // The contact this ship should shoot: the designated target when it is a
+  // sensible choice for the mount, otherwise the nearest thing in reach.
+  pickTarget(ship, weapon, pos, caps, wings) {
+    const locked = this.lockedTarget;
+    if (ship.side === 'A' && locked?.active && !locked.dying
+      && Phaser.Math.Distance.Between(pos.x, pos.y, locked.x, locked.y) <= weapon.range
+      // Anti-fighter mounts keep their screening job unless you designate a
+      // fighter yourself — that is what they are for.
+      && (!weapon.anti || locked.isStrike)) {
+      return locked;
+    }
+    const capT = this.nearestOf(pos.x, pos.y, caps, weapon.range);
+    const strikeT = this.nearestOf(pos.x, pos.y, wings, weapon.range);
+    return weapon.anti ? (strikeT ?? capT) : (capT ?? strikeT);
+  }
+
+  // The contact a ship under orders should steer at, and the one its bow
+  // battery should line up on: your designation when you have made one.
+  orderTarget(ship) {
+    const locked = this.lockedTarget;
+    if (locked?.active && !locked.dying && !locked.isStrike) return locked;
+    return this.nearestOf(ship.x, ship.y, this.fleets.B);
+  }
+
+  batteryTarget(ship) {
+    return this.orderTarget(ship);
+  }
+
+  // Shared capital AI: close to a preferred range, then hold a broadside
+  // orbit so the beam mounts keep bearing. Used by enemy captains and by
+  // your own ships under ENGAGE / STAND OFF orders.
+  combatDrive(ship, target, dt, preferred = ENGAGE_RANGE) {
+    if (!target?.active) {
+      ship.throttle = 0.25;
+      this.steerCapital(ship, dt);
+      return;
+    }
+    const dist = Phaser.Math.Distance.Between(ship.x, ship.y, target.x, target.y);
+    const bearing = Phaser.Math.Angle.Between(ship.x, ship.y, target.x, target.y);
+    // Too far: bow on and close. In the pocket: turn broadside. Too close:
+    // open the range while keeping the guns on.
+    const want = dist > preferred * 0.85 ? bearing
+      : dist < preferred * 0.45 ? bearing + 110 * DEG
+      : bearing + 70 * DEG;
+    ship.facing = Phaser.Math.Angle.RotateTo(ship.facing, want, ship.spec.turn * DEG * dt);
+    ship.throttle = dist > preferred * 0.5 ? 1 : 0.45;
+    this.steerCapital(ship, dt);
+  }
+
   // Turret hardpoints engage on their own; anti-fighter mounts (flak, AAA
   // beams) prefer strike craft and fall back to capitals, laser turrets
   // prefer capitals and plink fighters when nothing bigger is in reach.
@@ -780,10 +957,10 @@ export class SandboxScene extends Phaser.Scene {
       const weapon = WEAPONS[point.fitted];
       if (weapon.type !== 'turret' || ship.mountDisabled[i] || time < ship.nextFire[i]) return;
       const pos = this.hardpointPos(ship, point);
-      const capT = this.nearestOf(pos.x, pos.y, caps, weapon.range);
-      const strikeT = this.nearestOf(pos.x, pos.y, wings, weapon.range);
-      const target = weapon.anti ? (strikeT ?? capT) : (capT ?? strikeT);
+      const target = this.pickTarget(ship, weapon, pos, caps, wings);
       if (!target) return;
+      // The mount has to be able to train on it — hulls mask their own guns.
+      if (!this.mountBears(ship, point, target.x, target.y)) return;
       ship.nextFire[i] = time + weapon.delay * delayMul + Math.random() * 1500;
       if (weapon.beam) {
         this.fireBeam(ship, target, weapon, point, true);
@@ -822,15 +999,21 @@ export class SandboxScene extends Phaser.Scene {
     const target = a.isShot ? b : a;
     if (!shot.active || !target.active) return;
     const damage = shot.damage ?? 10;
-    const { x, y, burstFx } = shot;
+    const { x, y, burstFx, owner } = shot;
     shot.destroy();
     if (burstFx) this.flakBurst(x, y);
-    this.damageShip(target, damage, x, y);
+    this.damageShip(target, damage, x, y, owner);
   }
 
-  damageShip(ship, damage, x, y) {
+  // `source` is whoever fired: strike-craft damage is credited to the
+  // carrier that launched them, so an air group's work shows on its ship.
+  damageShip(ship, damage, x, y, source) {
     if (ship.dying || !ship.active) return;
+    const applied = Math.min(damage, Math.max(0, ship.hull));
     ship.hull -= damage;
+    const credit = source?.stats ? source : source?.carrier;
+    if (credit?.stats && !ship.isStrike) credit.stats.dealt += applied;
+    if (ship.stats) ship.stats.taken += applied;
     if (ship.isStrike) {
       if (ship.hull <= 0) this.killStrike(ship);
       return;
@@ -906,10 +1089,43 @@ export class SandboxScene extends Phaser.Scene {
 
   endMission(won) {
     this.over = true;
+    this.lockedTarget = null;
     if (won) sfx('win');
     this.banner.setText(won
-      ? 'HOSTILE FLEET DESTROYED\n\nTAP TO RETURN'
-      : 'FLEET LOST\n\nTAP TO RETURN');
+      ? 'HOSTILE FLEET DESTROYED\n\nTAP FOR REPORT'
+      : 'FLEET LOST\n\nTAP FOR REPORT');
+    this.report = this.buildReport(won);
+    // Let the last hull finish burning, then hand over to the report.
+    this.time.delayedCall(4000, () => this.showReport());
+  }
+
+  // The battle record. The campaign layer will consume exactly this shape to
+  // carry damage, losses and standout crews between missions.
+  buildReport(won) {
+    const roster = (side) => this.fleets[side].map((ship) => ({
+      cls: ship.spec.name,
+      shipName: ship.shipName,
+      survived: !!ship.active,
+      hullPct: Math.max(0, Math.round((ship.hull / ship.spec.hull) * 100)),
+      mountsLive: ship.active ? ship.mountDisabled.filter((d) => !d).length : 0,
+      mountsTotal: ship.spec.hardpoints.length,
+      dealt: ship.stats.dealt,
+      taken: ship.stats.taken,
+    }));
+    return {
+      won,
+      durationMs: this.time.now - this.startedAt,
+      craftLost: { ...this.craftLost },
+      fleets: { A: roster('A'), B: roster('B') },
+      playerKeys: [...this.playerKeys],
+      enemyKeys: [...this.enemyKeys],
+    };
+  }
+
+  showReport() {
+    if (!this.report || this.reportShown) return;
+    this.reportShown = true;
+    this.scene.start('afteraction', this.report);
   }
 
   // Touch-first control suite: a helm pad, an energy board, wing orders,
@@ -919,9 +1135,9 @@ export class SandboxScene extends Phaser.Scene {
     this.input.addPointer(3);
 
     this.hud = this.add.text(0, 0, '', {
-      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 13, color: '#9fd8ff',
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 11, color: '#9fd8ff', lineSpacing: 3,
     }).setDepth(21);
-    this.uiPlace(this.hud, () => ({ x: 52, y: 12 }));
+    this.uiPlace(this.hud, () => ({ x: 52, y: 8 }));
 
     this.banner = this.add.text(0, 0, '', {
       fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 30, color: '#ffffff', align: 'center',
@@ -960,20 +1176,35 @@ export class SandboxScene extends Phaser.Scene {
     this.fleetTabs = this.fleets.A.map((ship, i) => button('', (w, h) => this.tabRect(i, w, h),
       () => { this.setCon(i); }, { size: 11 }));
 
-    // Wing orders (one standing order for the whole air group).
-    this.orderTexts = {};
-    ORDERS.forEach((order, i) => {
-      this.orderTexts[order] = button(order.toUpperCase(),
-        () => ({ x: 4 + i * 82, y: this.scale.height - PANEL_H - 44, w: 78, h: 34 }),
-        () => { this.wingOrder = order; }, { size: 11, color: '#8fb7d8' });
-      // Anchor uses live height via the at() closure; re-register for resize.
-      this.uiAnchors[this.uiAnchors.length - 1].anchor = (w, h) => ({
-        x: 4 + i * 82 + 39, y: h - PANEL_H - 44 + 17,
+    // Order rows. Fleet orders sit closest to the panel; the air-group row
+    // stacks above it and only exists when a carrier is present.
+    const orderRow = (labelText, items, rowY, apply, colour) => {
+      const made = [label(labelText, (w, h) => ({ x: 8, y: rowY(h) + 17 }),
+        { ox: 0, size: 10, color: '#5a6678' })];
+      items.forEach((item, i) => {
+        const at = (w, h) => ({ x: ORDER_X + i * 76, y: rowY(h), w: 72, h: 34 });
+        made.push(button(item.label, at, () => apply(item.key), { size: 11, color: colour }));
+        this.uiAnchors[this.uiAnchors.length - 1].anchor = (w, h) => {
+          const r = at(w, h);
+          return { x: r.x + r.w / 2, y: r.y + r.h / 2 };
+        };
+        this.hitButtons[this.hitButtons.length - 1].at = at;
       });
-      this.hitButtons[this.hitButtons.length - 1].at = (w, h) => ({
-        x: 4 + i * 82, y: h - PANEL_H - 44, w: 78, h: 34,
-      });
-    });
+      return made;
+    };
+    orderRow('FLT', [
+      { key: 'form', label: 'FORM' },
+      { key: 'engage', label: 'ENGAGE' },
+      { key: 'standoff', label: 'STAND' },
+    ], (h) => this.fleetRowY(h), (key) => { this.fleetOrder = key; }, '#ffcf9a');
+    // The air-group row only exists when a carrier is in the fight.
+    this.wingRowUI = orderRow('AIR', ORDERS.map((o) => ({ key: o, label: o.toUpperCase() })),
+      (h) => this.wingRowY(h), (key) => { if (this.anyHangar()) this.wingOrder = key; }, '#8fb7d8');
+    const showWingRow = this.anyHangar();
+    for (const obj of this.wingRowUI) obj.setVisible(showWingRow);
+    for (let i = this.hitButtons.length - ORDERS.length; i < this.hitButtons.length; i++) {
+      this.hitButtons[i].when = () => this.anyHangar();
+    }
 
     [['wpn', 'WPN', '#ff8866'], ['eng', 'ENG', '#6fb7ff'], ['rep', 'REP', '#7dd68f']]
       .forEach(([sys, name, color], r) => {
@@ -984,15 +1215,30 @@ export class SandboxScene extends Phaser.Scene {
       });
     this.poolText = label('', (w, h) => ({ x: 150, y: h - 112 }), { ox: 0, size: 11, color: '#8593a6' });
 
+    // Contact read-out: what you have designated and what it is made of.
+    this.contactText = this.add.text(0, 0, '', {
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 10, color: '#aab6c6', lineSpacing: 3,
+    }).setDepth(22);
+    this.uiPlace(this.contactText, (w) => ({ x: w - this.contactW() - 6, y: this.contactY() + 8 }));
+    this.contactStats = this.add.text(0, 0, '', {
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 10, color: '#8593a6', lineSpacing: 3,
+    }).setDepth(22);
+    this.uiPlace(this.contactStats, (w) => ({ x: w - this.contactW() - 6, y: this.contactY() + 46 }));
+    this.threatText = this.add.text(0, 0, '', {
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 10, color: '#ff7a6a',
+    }).setOrigin(1, 0).setDepth(22);
+    this.uiPlace(this.threatText, (w) => ({ x: w - 14, y: this.contactY() + CONTACT_H + 6 }));
+
     // Pointer routing: the pad steers, one free finger pans, two pinch.
     this.steerId = null;
     this.panPointers = new Map();
     this.pinch = null;
 
     this.input.on('pointerdown', (p) => {
-      if (this.over) { this.scene.start('title'); return; }
+      if (this.over) { this.showReport(); return; }
       const w = this.scale.width, h = this.scale.height;
       for (const b of this.hitButtons) {
+        if (b.when && !b.when()) continue;
         const r = b.at(w, h);
         if (p.x >= r.x && p.x <= r.x + r.w && p.y >= r.y && p.y <= r.y + r.h) { b.cb(); return; }
       }
@@ -1003,7 +1249,10 @@ export class SandboxScene extends Phaser.Scene {
       }
       // The panel strip and minimap are dead zones for camera gestures.
       if (p.y > h - PANEL_H) return;
-      if (p.x > w - MM_W - 28 && p.y < this.mmH + 28) return;
+      if (p.x > w - Math.max(this.mmW, this.contactW()) - 28
+        && p.y < this.contactY() + CONTACT_H + 22) return;
+      // A press that neither travels nor lingers designates a contact.
+      this.tapCandidate = { id: p.id, x: p.x, y: p.y, at: this.time.now };
       this.panPointers.set(p.id, { x: p.x, y: p.y });
       if (this.panPointers.size === 2) {
         const [a, b] = [...this.panPointers.values()];
@@ -1022,6 +1271,7 @@ export class SandboxScene extends Phaser.Scene {
         const [a, b] = [...this.panPointers.values()];
         const d = Math.hypot(a.x - b.x, a.y - b.y);
         cam.setZoom(Phaser.Math.Clamp(this.pinch.z0 * (d / this.pinch.d0), ZOOM_MIN, ZOOM_MAX));
+        this.tapCandidate = null; // a pinch is never a tap
       } else {
         const dx = p.x - entry.x, dy = p.y - entry.y;
         entry.x = p.x;
@@ -1033,6 +1283,13 @@ export class SandboxScene extends Phaser.Scene {
 
     const release = (p) => {
       if (p.id === this.steerId) this.steerId = null; // helm holds the last order
+      const tap = this.tapCandidate;
+      if (tap?.id === p.id) {
+        this.tapCandidate = null;
+        if (Math.hypot(p.x - tap.x, p.y - tap.y) < TAP_SLOP && this.time.now - tap.at < TAP_MS) {
+          this.tryLockTarget(p);
+        }
+      }
       this.panPointers.delete(p.id);
       if (this.panPointers.size < 2) this.pinch = null;
     };
@@ -1046,9 +1303,45 @@ export class SandboxScene extends Phaser.Scene {
     });
   }
 
+  // Fleet tabs share the width left of the minimap, so three capitals still
+  // fit across a portrait phone.
   tabRect(i, w) {
-    return { x: 52 + i * 128, y: 30, w: 122, h: 26 };
+    const n = Math.max(1, this.fleets.A.length);
+    const room = w - Math.max(this.mmW, this.contactW()) - 76;
+    const span = Math.max(108, Math.min(room, 128 * n));
+    const tw = span / n - 6;
+    return { x: 52 + i * (tw + 6), y: this.hudBottom(), w: tw, h: 26 };
   }
+
+  // Where the fleet tabs start: clear of however many lines the status
+  // block wrapped to on this screen.
+  hudBottom() {
+    return 8 + Math.max(30, this.hud?.height ?? 30) + 4;
+  }
+
+  // Packs status fields into as many lines as the space beside the minimap
+  // allows, so nothing is ever clipped off the edge of a phone.
+  packFields(fields) {
+    const avail = this.scale.width - this.mmW - 76;
+    const cols = Math.max(14, Math.floor(avail / 6.7));
+    const lines = [];
+    let line = '';
+    for (const f of fields) {
+      if (!line) line = f;
+      else if (line.length + 3 + f.length <= cols) line += `   ${f}`;
+      else { lines.push(line); line = f; }
+    }
+    if (line) lines.push(line);
+    return lines.join('\n');
+  }
+
+  fleetRowY(h) { return h - PANEL_H - 44; }
+
+  wingRowY(h) { return h - PANEL_H - 84; }
+
+  contactY() { return 14 + this.mmH + 8; }
+
+  contactW() { return Math.max(152, this.mmW); }
 
   updateSteer(p) {
     const dx = p.x - PAD.x, dy = p.y - (this.scale.height - 62);
@@ -1098,13 +1391,35 @@ export class SandboxScene extends Phaser.Scene {
         .strokeRect(r.x, r.y, r.w, r.h);
     });
 
-    // Wing order buttons (only shown once any carrier is in the fleet).
+    // Order rows: fleet standing order always, air-group order when a
+    // carrier is in the fight.
+    const row = (y, n, activeIdx, tint) => {
+      for (let i = 0; i < n; i++) {
+        const on = i === activeIdx;
+        g.fillStyle(0x11161f, on ? 0.92 : 0.6).fillRect(ORDER_X + i * 76, y, 72, 34);
+        g.lineStyle(1, on ? tint : 0x3a4a62, 1).strokeRect(ORDER_X + i * 76, y, 72, 34);
+      }
+    };
+    row(this.fleetRowY(h), FLEET_ORDERS.length, FLEET_ORDERS.indexOf(this.fleetOrder), 0xffb454);
     if (this.anyHangar()) {
-      ORDERS.forEach((order, i) => {
-        const active = this.wingOrder === order;
-        g.fillStyle(0x11161f, active ? 0.9 : 0.6).fillRect(4 + i * 82, h - PANEL_H - 44, 78, 34);
-        g.lineStyle(1, active ? 0x9fd8ff : 0x3a4a62, 1).strokeRect(4 + i * 82, h - PANEL_H - 44, 78, 34);
-      });
+      row(this.wingRowY(h), ORDERS.length, ORDERS.indexOf(this.wingOrder), 0x9fd8ff);
+    }
+
+    // Contact read-out box under the minimap.
+    const cty = this.contactY();
+    const locked = this.lockedTarget?.active && !this.lockedTarget.dying;
+    const cw = this.contactW();
+    g.fillStyle(0x0a0d14, 0.72).fillRect(w - cw - 14, cty, cw, CONTACT_H);
+    g.lineStyle(1, locked ? 0xffb454 : 0x2b3a52, locked ? 0.9 : 1)
+      .strokeRect(w - cw - 14, cty, cw, CONTACT_H);
+    if (locked) {
+      // Hull bar for the designated contact.
+      const t = this.lockedTarget;
+      const frac = Phaser.Math.Clamp(t.hull / (t.spec.hull ?? 1), 0, 1);
+      const bx = w - cw - 6, bw = cw - 16, by = cty + 37;
+      g.fillStyle(0x11161f, 0.9).fillRect(bx, by, bw, 5);
+      g.fillStyle(frac > 0.6 ? 0x7dd68f : frac > 0.3 ? 0xffb454 : 0xff5040, 0.95)
+        .fillRect(bx, by, bw * frac, 5);
     }
 
     // Energy board rows: − [pips ×4] +
@@ -1174,6 +1489,18 @@ export class SandboxScene extends Phaser.Scene {
     this.drawMinimap();
     this.drawPanel();
     this.updateBeams(delta, time);
+
+    // Incoming fire: enemy beams still winding up with a solution on one of
+    // your capitals. Sorted so the HUD calls out the shot landing first.
+    this.threats = this.beams
+      .filter((b) => b.ship.side === 'B' && b.ship.active && b.target?.side === 'A'
+        && !b.target.isStrike && b.target.active && !b.target.dying && b.elapsed < b.charge)
+      .map((b) => ({
+        target: b.target, weapon: b.weapon,
+        charge: b.elapsed / b.charge, left: (b.charge - b.elapsed) / 1000,
+      }))
+      .sort((a, b) => a.left - b.left);
+    this.tactical.draw(time);
     for (const ship of [...this.fleets.A, ...this.fleets.B]) this.updateEngine(ship);
     this.fires = this.fires.filter((f) => {
       if (!f.ship.active) { f.emitter.destroy(); return false; }
@@ -1190,10 +1517,18 @@ export class SandboxScene extends Phaser.Scene {
     this.poolText.setText(`POWER  FREE ${e.pool - e.wpn - e.eng - e.rep}/${e.pool}`);
     this.fleets.A.forEach((ship, i) => {
       const pct = ship.active ? Math.max(0, Math.round((ship.hull / ship.spec.hull) * 100)) : 0;
-      const name = ship.spec.name.replace(/^\S+ /, '');
-      this.fleetTabs[i].setText(ship.active
-        ? `${i === this.conIdx ? '★' : i + 1} ${name} ${pct}%`
-        : `× ${name}`)
+      const r = this.tabRect(i, sw);
+      const mark = i === this.conIdx ? '*' : `${i + 1}`;
+      // Wide screens name the ship; a portrait phone only has room for the
+      // number and its hull state.
+      const name = r.w >= 118 ? ship.shipName
+        : r.w >= 78 ? ship.shipName.slice(0, 6) : '';
+      this.fleetTabs[i]
+        .setPosition(UIX + r.x + r.w / 2, r.y + r.h / 2)
+        .setFontSize(r.w >= 78 ? 11 : 10)
+        .setText(ship.active
+          ? `${mark}${name ? ` ${name}` : ''} ${pct}%`
+          : `x${name ? ` ${name}` : ` ${i + 1}`}`)
         .setColor(ship.active ? (i === this.conIdx ? '#ffb454' : '#aab6c6') : '#5a6678');
     });
 
@@ -1220,31 +1555,25 @@ export class SandboxScene extends Phaser.Scene {
       if (!ship.active || ship.dying) return;
       const isCon = i === this.conIdx;
       if (!isCon) {
-        slot += 1;
         ship.speedMul = 1;
-        this.formationDrive(ship, slot, dt);
+        if (this.fleetOrder === 'form') {
+          slot += 1;
+          this.formationDrive(ship, slot, dt);
+        } else {
+          this.combatDrive(ship, this.orderTarget(ship), dt,
+            this.fleetOrder === 'standoff' ? STANDOFF_RANGE : ENGAGE_RANGE);
+        }
       }
       const delayMul = isCon ? WPN_MUL[e.wpn] : 1;
       this.runTurrets(ship, 'B', time, delayMul);
-      if (!this.over) {
-        this.tryBattery(ship, this.nearestOf(ship.x, ship.y, this.fleets.B), time, delayMul);
-      }
+      if (!this.over) this.tryBattery(ship, this.batteryTarget(ship), time, delayMul);
     });
 
     // Enemy captains: close to gun range, then hold a slow broadside orbit.
     for (const ship of this.fleets.B) {
       if (!ship.active || ship.dying || this.over) continue;
       const target = this.nearestOf(ship.x, ship.y, this.fleets.A);
-      if (target) {
-        const dist = Phaser.Math.Distance.Between(ship.x, ship.y, target.x, target.y);
-        const bearing = Phaser.Math.Angle.Between(ship.x, ship.y, target.x, target.y);
-        const want = dist > ENGAGE_RANGE * 0.85 ? bearing : bearing + 70 * DEG;
-        ship.facing = Phaser.Math.Angle.RotateTo(ship.facing, want, ship.spec.turn * DEG * dt);
-        ship.throttle = dist > ENGAGE_RANGE * 0.5 ? 1 : 0.45;
-      } else {
-        ship.throttle = 0.3;
-      }
-      this.steerCapital(ship, dt);
+      this.combatDrive(ship, target, dt);
       this.runTurrets(ship, 'A', time);
       this.tryBattery(ship, target, time);
     }
@@ -1261,13 +1590,40 @@ export class SandboxScene extends Phaser.Scene {
       const mountsUp = con.mountDisabled.filter((d) => !d).length;
       const hangarLeft = this.fleets.A.reduce((n, s) => n + (s.active ? (s.hangarQueue?.length ?? 0) : 0), 0);
       const wings = this.anyHangar()
-        ? `   WINGS ${this.strike.A.length} UP · ${hangarLeft} HELD   ORDER ${this.wingOrder.toUpperCase()}`
+        ? `WINGS ${this.strike.A.length} UP ${hangarLeft} BAY`
         : '';
-      this.hud.setText(
-        `${spec.name.toUpperCase()}  HULL ${Math.max(0, Math.round(con.hull))}/${spec.hull}   ` +
-        `MOUNTS ${mountsUp}/${spec.hardpoints.length}   BATTERY ${batteryText}${wings}   ` +
-        `HOSTILES ${this.fleets.B.filter((s) => s.active).length} SHIPS · ${this.strike.B.length} CRAFT`,
-      );
+      this.hud.setText(this.packFields([
+        `${con.shipName.toUpperCase()} · ${spec.name.toUpperCase()}`,
+        `HULL ${Math.max(0, Math.round(con.hull))}/${spec.hull}`,
+        `MOUNTS ${mountsUp}/${spec.hardpoints.length}`,
+        `BATTERY ${batteryText}`,
+        ...(wings ? [wings] : []),
+        `HOSTILES ${this.fleets.B.filter((s) => s.active).length}·${this.strike.B.length}`,
+      ]));
     }
+
+    // Contact read-out for the designated target, and the incoming-fire call.
+    const t = this.lockedTarget;
+    if (t?.active && !t.dying) {
+      const isCraft = !!t.isStrike;
+      const cap = t.spec.hull ?? 1;
+      const pct = Math.max(0, Math.round((t.hull / cap) * 100));
+      this.contactText.setText(
+        `${t.spec.name.toUpperCase()}\n${isCraft ? t.spec.cls.toUpperCase() : `${t.shipName.toUpperCase()} · ${t.spec.cls.toUpperCase()}`}`);
+      const range = con?.active ? Math.round(Phaser.Math.Distance.Between(con.x, con.y, t.x, t.y)) : 0;
+      const guns = con?.active ? this.bearingCount(con, t) : { bearing: 0, live: 0 };
+      const mounts = isCraft ? '—'
+        : `${t.mountDisabled.filter((d) => !d).length}/${t.spec.hardpoints.length}`;
+      this.contactStats.setText(
+        `HULL ${pct}%  MNT ${mounts}\nRNG ${range}  GUNS ${guns.bearing}/${guns.live}`);
+    } else {
+      if (this.lockedTarget) this.lockedTarget = null;
+      this.contactText.setText('NO CONTACT\nTAP A HOSTILE');
+      this.contactStats.setText('');
+    }
+    const threat = this.threats[0];
+    this.threatText.setText(threat
+      ? `! INCOMING ${threat.weapon.name.toUpperCase()} → ${threat.target.shipName.toUpperCase()} ${threat.left.toFixed(1)}s`
+      : '');
   }
 }

@@ -21,16 +21,34 @@ There is no test suite or linter yet.
 - The player commands **capital ships** (FS2-inspired pacing): throttle-based helm,
   slow turns, auto-engaging turrets, bow-aligned main battery. Progression plan:
   small capitals → larger hulls → multi-ship fleets.
-- Scenes: `TitleScene` (menu, preloads all assets) → `SelectScene` (fleet setup:
-  up to 3 capitals per side) → `SandboxScene` (fleet battle), plus `WikiScene`
-  (ship registry) and `RefitScene` (wireframe hardpoint refitting; per-browser
-  persistence via `src/refit.js`, which mutates the SHIPS catalog in place).
+- Scenes: `TitleScene` (menu over a live attract battle, preloads all assets) →
+  `SelectScene` (fleet setup: up to 3 capitals per side, or a random faction
+  battle) → `SandboxScene` (fleet battle) → `AfterActionScene` (battle report),
+  plus `WikiScene` (ship registry) and `RefitScene` (wireframe hardpoint
+  refitting; per-browser persistence via `src/refit.js`, which mutates the
+  SHIPS catalog in place).
+- **Campaign hand-off**: `SandboxScene.buildReport()` produces the battle
+  record — per-ship hull/mounts/damage keyed by individual ship name, craft
+  losses and duration. That object is what a campaign layer will consume to
+  carry damage, losses and veterancy between missions; extend it rather than
+  bolting a parallel save format onto the scene.
+- Tactical layer: tap a hostile to **designate** it (guns and ships under
+  orders prioritise it); each turret only bears within its hull side's arc
+  (`mountArc`), so bow-on and broadside are real choices; enemy beams charging
+  on your fleet raise **threat warnings**; un-conned capitals follow a fleet
+  order (FORM / ENGAGE / STAND OFF). World-space read-outs (reticle, threat
+  brackets, weapon envelope) live in `src/tactical.js`; ships get individual
+  names from `src/names.js`.
 - Fleets: the player cons one capital at a time (fleet tabs switch the con);
   un-conned friendlies hold formation and fight on their own. Carriers launch
   their `hangar` complement (STRIKECRAFT wings of 4) on a cadence; strike craft
   are fully independent and follow one standing wing order
   (ENGAGE / STRIKE / SCREEN). Anti-fighter mounts (`anti: true` — flak, AAAf,
   SAAA) prefer strike-craft targets.
+- UI text must survive a portrait phone: build status lines through
+  `packFields()` (which wraps to the space beside the minimap), give every
+  text `resolution: TEXT_RES` so it stays sharp on retina, and check both
+  orientations before shipping.
 - `SandboxScene` is touch-first (iOS target): no keyboard bindings. The interface
   renders on a second camera parked at `UIX` (far outside the world) so pinch
   zoom never scales it — UI objects live at `x = UIX + screenX` and are anchored

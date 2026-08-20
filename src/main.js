@@ -4,6 +4,7 @@ import { SelectScene } from './scenes/SelectScene.js';
 import { SandboxScene } from './scenes/SandboxScene.js';
 import { WikiScene } from './scenes/WikiScene.js';
 import { RefitScene } from './scenes/RefitScene.js';
+import { AfterActionScene } from './scenes/AfterActionScene.js';
 import { loadRefits } from './refit.js';
 
 loadRefits();
@@ -20,5 +21,5 @@ window.game = new Phaser.Game({
   physics: {
     default: 'arcade',
   },
-  scene: [TitleScene, SelectScene, SandboxScene, WikiScene, RefitScene],
+  scene: [TitleScene, SelectScene, SandboxScene, WikiScene, RefitScene, AfterActionScene],
 });
