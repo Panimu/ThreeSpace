@@ -1,7 +1,8 @@
 # Sprite sheet index
 
 Eight FS2-style sheets, user-provided (fan-made art in the FreeSpace 2 idiom,
-uploaded 2026-08-19). These are labeled reference plates, not packed atlases:
+uploaded 2026-08-19; the support and Vasudan plates re-issued 2026-08-21).
+These are labeled reference plates, not packed atlases:
 each sprite sits on a chart background with caption text, so individual ships
 must be **sliced out** before game use (see Extraction notes at the bottom).
 
@@ -15,11 +16,14 @@ captions are scrambled (Hecate marked "corvette", Orion "gunship",
 Leviathan "courier"). Trust the ship names + lengths, not the class captions.
 Bonus: includes the GTD Hades, which our catalog doesn't have yet.
 
-## vasudan-capitals.png (1024×1536, RGB)
-Vasudan capital scale plate with metre/km ruler.
-GVD Hatshepsut 2,126 m · GVD Typhon 2,153 m · GVCv Sobek 608 m ·
-GVC Mentu 322 m · GVC Aten 230 m, plus a magnified strip re-rendering
-Mentu and Aten at higher detail (prefer the magnified versions when slicing).
+## vasudan-capitals.png (1024×1536, RGB — re-issued 2026-08-21)
+Vasudan capital plate, orthographic top view, two bands each to its own scale.
+- Destroyers (0–2.25 km): GVD Typhon 2,153 m · GVD Hatshepsut 2,126 m.
+- Corvette and cruisers (0–650 m): GVCv Sobek 608 m · GVC Mentu 322 m ·
+  GVC Aten 230 m.
+Replaces the earlier plate, which had lower-detail hulls and a magnified
+Mentu/Aten strip. Ship labels sit in a left-hand column (x < 262) and each
+band carries a scale bar; both are erased before keying.
 
 ## shivan-capitals.png (1024×1536, RGB)
 Shivan capital scale plate.
@@ -38,18 +42,29 @@ Full strike-craft roster, three columns, 0–150 m scale ruler.
 - Shivan fighters: Scorpion, Basilisk, Manticore, Dragon, Mara, Astaroth, Aeshma.
   Shivan bombers: Shaitan, Nephilim, Seraphim, Nahema, Taurvi.
 
-## support-and-installations.png (864×1821, RGB)
-Support craft, logistics, NTF variants, and installations, with lengths.
-- GTVA: Charybdis (AWACS), Faustus, Chronos, Poseidon, Triton, Argo, Elysium,
-  Zephyrus, Hippocrates, Hygeia, Ganymede (drydock ring 1,348 m),
-  Arcadia (3,792 m), Mjolnir sentry.
-- Vasudan: Setekh, Anuket, Bes, Nephthys, Ankh sentry.
-- NTF named variants: Iceni, Belisarius (Deimos-class), Repulse and
-  Carthage (Orion-class), Glorious, Impervious (cruisers) — red-trim hulls.
-- Shivan: Azrael, Dis, Mephisto, Asmodeus, Rahu, Trident, Belial, Comm Node,
-  SAC 3 cargo.
-- Other: Knossos portal. Small-hardware strip (10× magnified): Hermes escape
-  pod, Pharos buoy, TC 2 cargo.
+## support-and-installations.png (1536×1024, RGB — re-issued 2026-08-21)
+Support craft, logistics and installations in three bands, each to its own
+scale, with lengths printed under every hull.
+- Band 1 — large installations and unique craft: GTI Arcadia 3,792 m ·
+  GTI Ganymede 1,348 m · NTF Iceni 998 m · NTF Boadicea 982 m ·
+  Shivan Comm Node 748 m · Ancient Knossos 659 m.
+- Band 2 — logistics, science, mining and AWACS:
+  - Terran: GTM Hippocrates 546 · GTFr Triton 313 · GTG Zephyrus 250 ·
+    GTA Charybdis 181 · GTT Argo 171 · GTSC Faustus 162 · GTFr Poseidon 67 ·
+    GTT Elysium 32.
+  - Vasudan: GVG Anuket 347 · GVA Setekh 190 · GVFr Satis 107 · GVFr Bes 56 ·
+    PVFr Ma'at 56 · GVT Isis 27.
+  - Shivan: SFr Dis 317 · SSG Rahu 211 · SFr Asmodeus 123 · SFr Mephisto 54 ·
+    ST Azrael 46.
+- Band 3 — small support and emplacements: GTSG Mjolnir 108 ·
+  GVS Nephthys 34 · GTS Hygeia 32.
+This plate is the length authority for every non-combatant. Note the NTF
+Iceni is drawn **nose-up** and has to be rotated 90° so its length runs along
+the sprite's width, and the Boadicea is an asteroid installation rather than
+the Deimos-class corvette it was previously taken for.
+Superseded hulls kept from the earlier 864×1821 plate, which is no longer in
+the repository: GTFr Chronos, GVSG Ankh, SSG Belial, SSG Trident, SAC 3, and
+the red-trim NTF variants Belisarius/Repulse/Carthage/Glorious/Impervious.
 
 ## hardware-terran-vasudan.png (1536×1024, RGB — checkerboard baked, NO alpha)
 Hardpoint/refit component art, labeled, two halves:
@@ -82,8 +97,12 @@ and beam rendering (our beams are procedural; match them to these samples).
 
 ## Extraction notes (next step)
 - Chart-background sheets: background is near-uniform dark navy with faint
-  grid — flood-fill/chroma keying from the edges should lift sprites cleanly;
-  caption text must be excluded by bounding-box, not color.
+  grid. Key against a whole-sheet median (the border is title/footer text, not
+  background), then drop speckle by connected-component size and erase the
+  chart's thin measurement rules as near-full-width lone rows.
+- Caption text, band titles and faction labels must be blanked to background
+  by explicit rects before keying — a bounding box alone cannot separate a
+  caption from the hull sitting a few pixels above it.
 - hardware-terran-vasudan.png needs checkerboard-pattern removal (regular
   8-ish px grey/white grid) — scriptable.
 - Slice output goes to `assets/ships/<faction>/<name>.png` (upright, alpha,

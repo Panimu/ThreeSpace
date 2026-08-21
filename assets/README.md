@@ -28,9 +28,7 @@ Sliced game-ready sprites:
 - `ships/other/` — the Knossos portal.
 - `fx/` — beam bodies, bolt cores, flak burst cut from the ordnance sheet.
 
-Campaign reference data lives in `scripts/fs2-campaign-source.json`: a
-distilled per-mission roster (which hulls were present, their names, their
-IFF, and the goal list) derived from a clean-room campaign reconstruction. It
-is reference data, not game data — no retail assets, tables or mission files
-are reproduced. `scripts/check-campaign.mjs` audits `src/campaign.js` against
-it.
+Campaign reference material lives in `docs/` — see `docs/README.md`. The
+clean-room reconstruction there is an index of campaign *structure* (rosters,
+goals, events); briefing prose is represented by string IDs and hashes rather
+than reproduced, and no retail assets, tables or mission files are included.

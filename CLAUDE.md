@@ -42,10 +42,12 @@ There is no test suite or linter yet.
 - **Campaign**: `src/campaign.js` is the mission graph — the FS2 single-player
   campaign (30 main operations plus two optional SOC loops) rebuilt around the
   capital ships actually present in each retail mission. Force composition is
-  **not** hand-invented: `scripts/fs2-campaign-source.json` holds the distilled
-  canon roster (hulls, names, IFF, goals per mission) and
-  `scripts/check-campaign.mjs` audits `campaign.js` against it — run it after
-  touching either. A mission that deliberately departs from canon carries a
+  **not** hand-invented. The chain is
+  `docs/fs2-campaign-reconstruction.md` → `scripts/build-campaign-source.py` →
+  `scripts/fs2-campaign-source.json` (hulls, names, IFF, goals per mission) →
+  `scripts/check-campaign.mjs`, which audits `campaign.js` against it. Run the
+  checker after touching either end; re-run the generator after editing the
+  reconstruction or its class maps. A mission that deliberately departs from canon carries a
   `canonNote` string, which is what stops the checker erroring. This guard
   exists because the campaign was once written from a summary instead of the
   roster and twenty missions silently lost the ally that fought in them. `CampaignScene` is the
@@ -125,12 +127,17 @@ There is no test suite or linter yet.
 Original FreeSpace 2 game data is proprietary and must never be committed;
 personal local assets belong in `assets/local/` (gitignored).
 
-## Asset status (2026-08, post-resprite)
+## Asset status (2026-08-21, post-resprite)
 
 The game now runs entirely on user-provided FS2-style sprite sheets
 (`assets/sheets/`, indexed in `assets/sheets/INDEX.md`):
 - `assets/ships/<faction>/*.png` — capital sprites sliced from the sheets
   (horizontal art: Terran/Shivan face left → `flip: true`, Vasudan face right).
+  Support hulls live alongside them plus `ships/ntf/` and `ships/other/`. The
+  support and Vasudan plates were re-issued 2026-08-21 and are the length
+  authority — `assets/sheets/INDEX.md` lists every printed figure. The NTF
+  Iceni is drawn nose-up on its plate and is rotated 90° when sliced, because
+  the length axis has to be the sprite's width.
 - `assets/fx/*.png` — beam bodies, bolt cores, and the flak burst sliced from
   the ordnance sheet; `WEAPONS` entries reference them via `bolt`/`beamTex`.
 - Backgrounds, glow orbs, and all audio are procedural (`src/fx.js`).

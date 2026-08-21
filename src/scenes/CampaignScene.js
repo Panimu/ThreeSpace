@@ -59,24 +59,30 @@ export class CampaignScene extends Phaser.Scene {
       { ox: 0.5, wrap: Math.min(620, w - 40), align: 'center', ls: 0, lh: 5 });
     y += brief.height + 12;
 
-    // Who is out there, named.
-    const listing = (ships) => ships
-      .map((e) => `${shipSpec(e.key).name}${e.name ? ` ${e.name}` : ''}`).join('  ·  ');
-    const foes = [...mission.enemy, ...(mission.civilians?.B ?? [])];
-    this.text(w / 2, y, `OPPOSITION   ${listing(foes)}`, 10, '#e8a49a',
-      { ox: 0.5, wrap: w - 40, align: 'center' });
-    y += 20;
-    if (mission.attach?.length) {
-      this.text(w / 2, y, `ATTACHED   ${listing(mission.attach)}`,
-        10, '#8fd8a4', { ox: 0.5, wrap: w - 40, align: 'center' });
-      y += 20;
-    }
-    // Whatever is out there that cannot defend itself.
-    if (mission.civilians?.A?.length) {
-      this.text(w / 2, y, `IN COMPANY   ${listing(mission.civilians.A)}`,
-        10, '#8593a6', { ox: 0.5, wrap: w - 40, align: 'center' });
-      y += 20;
-    }
+    // Who is out there, named. Identical hulls are grouped rather than listed
+    // one by one, and a ship whose name is already its class name — the NTF
+    // Boadicea — is not printed twice.
+    const listing = (ships) => {
+      const counts = new Map();
+      for (const e of ships) {
+        const spec = shipSpec(e.key);
+        const label = e.name && !spec.name.endsWith(e.name)
+          ? `${spec.name} ${e.name}` : spec.name;
+        counts.set(label, (counts.get(label) ?? 0) + 1);
+      }
+      return [...counts].map(([label, n]) => (n > 1 ? `${n}× ${label}` : label)).join('  ·  ');
+    };
+    // Each of these can wrap, so the next line starts below what was drawn
+    // rather than a fixed step down.
+    const roster = (label, ships, colour) => {
+      if (!ships?.length) return;
+      const t = this.text(w / 2, y, `${label}   ${listing(ships)}`, 10, colour,
+        { ox: 0.5, wrap: w - 40, align: 'center' });
+      y += t.height + 6;
+    };
+    roster('OPPOSITION', [...mission.enemy, ...(mission.civilians?.B ?? [])], '#e8a49a');
+    roster('ATTACHED', mission.attach, '#8fd8a4');
+    roster('IN COMPANY', mission.civilians?.A, '#8593a6');
     const kinds = {
       survive: () => `HOLD THE ACTION FOR ${Math.round(mission.objective.seconds / 60 * 10) / 10} MINUTES`,
       protect: () => `${mission.objective.ship.toUpperCase()} MUST SURVIVE`,
@@ -96,23 +102,33 @@ export class CampaignScene extends Phaser.Scene {
 
     this.text(20, y, `TASK FORCE — TAP TO ASSIGN (MAX ${SORTIE_MAX})`, 10, '#6fb7ff', { ls: 1 });
     y += 16;
-    this.rosterRows(y, Math.max(120, h - y - 66));
+    this.rosterRows(y, Math.max(54, h - y - 70));
 
     const bw = Math.min(200, w / 2 - 30);
     this.button(w / 2 - bw / 2 - 6, h - 40, bw, 'LAUNCH', () => this.launch(mission), '#ffb454');
     this.button(w / 2 + bw / 2 + 6, h - 40, bw, 'ABANDON', () => this.confirmAbandon(), '#8593a6');
   }
 
+  // The task force grows past six hulls by Act III, so a wide screen splits it
+  // into two columns rather than squeezing rows until the text collides.
   rosterRows(top, room) {
     const w = this.scale.width;
-    const rowH = Math.min(30, room / Math.max(1, this.state.fleet.length));
-    this.state.fleet.forEach((ship, i) => {
-      const y = top + i * rowH;
-      if (y > top + room) return;
+    const fleet = this.state.fleet;
+    const cols = fleet.length > 5 && w > 560 ? 2 : 1;
+    const rows = Math.ceil(fleet.length / Math.max(1, cols));
+    const rowH = Math.max(17, Math.min(30, room / Math.max(1, rows)));
+    const colW = (w - 40 - (cols - 1) * 10) / cols;
+    const nameSize = rowH >= 24 ? 12 : rowH >= 20 ? 11 : 10;
+    const statSize = rowH >= 24 ? 10 : 9;
+    fleet.forEach((ship, i) => {
+      const col = i % cols, row = (i / cols) | 0;
+      const x = 20 + col * (colW + 10);
+      const y = top + row * rowH;
+      if (y + rowH > top + room + 2) return;
       const ready = shipReady(ship);
       const on = this.sortie.has(ship.name);
       const spec = SHIPS[ship.key];
-      const zone = this.add.rectangle(20, y, w - 40, rowH - 4, 0x11161f, on ? 0.9 : 0.5)
+      const zone = this.add.rectangle(x, y, colW, rowH - 4, 0x11161f, on ? 0.9 : 0.5)
         .setOrigin(0, 0).setStrokeStyle(1, on ? 0xffb454 : 0x2b3a52);
       if (ready) {
         zone.setInteractive({ useHandCursor: true })
@@ -120,17 +136,17 @@ export class CampaignScene extends Phaser.Scene {
       }
       const pct = hullPct(ship);
       const dead = ship.deadMounts.length;
-      this.text(28, y + rowH / 2 - 7, `${on ? '>' : ' '} ${ship.name}`, 12,
+      this.text(x + 8, y + rowH / 2 - 9, `${on ? '>' : ' '} ${ship.name}`, nameSize,
         ready ? (on ? '#ffb454' : '#aab6c6') : '#6a5a5a');
-      this.text(w - 28, y + rowH / 2 - 7,
-        `${spec.name}   HULL ${pct}%${dead ? `   ${dead} MOUNTS DOWN` : ''}`,
-        10, ready ? '#8593a6' : '#6a5a5a', { ox: 1 });
+      this.text(x + colW - 8, y + rowH / 2 - 9,
+        `${spec.name}   HULL ${pct}%${dead ? `   ${dead} DOWN` : ''}`,
+        statSize, ready ? '#8593a6' : '#6a5a5a', { ox: 1 });
       // Hull bar along the bottom edge of the row.
-      const bw = w - 44;
+      const barW = colW - 4;
       const g = this.add.graphics();
-      g.fillStyle(0x0a0d14, 0.9).fillRect(22, y + rowH - 8, bw, 3);
+      g.fillStyle(0x0a0d14, 0.9).fillRect(x + 2, y + rowH - 8, barW, 3);
       g.fillStyle(pct > 60 ? 0x7dd68f : pct > 30 ? 0xffb454 : 0xff5040, 0.95)
-        .fillRect(22, y + rowH - 8, bw * (pct / 100), 3);
+        .fillRect(x + 2, y + rowH - 8, barW * (pct / 100), 3);
     });
   }
 

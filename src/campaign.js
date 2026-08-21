@@ -33,27 +33,28 @@ export const MISSIONS = [
   // ---- Act I: the NTF rebellion, and what was waiting behind it ----
   {
     id: 'SM1-01', title: 'Surrender, Belisarius!', act: 'ACT I', where: 'Deneb — Cygnus Prime',
-    brief: 'Vasudan freighters of the Iota group are limping out of Cygnus Prime '
+    brief: 'Vasudan Satis freighters of the Iota group are limping out of Cygnus Prime '
       + 'with rebel colours closing on them. The NTF corvette Belisarius has '
       + 'ignored three orders to stand down. The Psamtik is on station and will '
       + 'not fire first. Get between the Belisarius and the Iota group.',
     enemy: [{ key: 'deimos', name: 'Belisarius' }],
     attach: [{ key: 'hatshepsut', name: 'Psamtik' }],
-    civilians: { A: [{ key: 'bes', name: 'Iota' }] },
+    civilians: { A: [{ key: 'satis', name: 'Iota' }] },
     objective: { kind: 'protect', ship: 'Iota' },
   },
   {
     id: 'SM1-02', title: 'The Place of Chariots', act: 'ACT I', where: 'Deneb asteroid belt',
-    brief: 'Intelligence puts an NTF supply depot inside the Deneb belt — Capricorn '
-      + 'freighters under sentry cover, with a corvette riding escort. Kill the '
-      + 'depot. You are not here to win a fleet action against a Deimos and you '
-      + 'will not be given a second chance to learn that.',
-    enemy: [{ key: 'deimos' }],
+    brief: 'The NTF has cut a forward base into an asteroid inside the Deneb belt '
+      + 'and is running Capricorn freighters out of it under sentry cover. It '
+      + 'cannot manoeuvre and it cannot run. Take the rock apart, and the '
+      + 'rebellion loses its supply line into Deneb with it.',
+    enemy: [],
     civilians: {
-      B: [{ key: 'triton', name: 'Capricorn' }, { key: 'poseidon', name: 'Capricorn' },
+      B: [{ key: 'boadicea', name: 'Boadicea' }, { key: 'triton', name: 'Capricorn' },
+        { key: 'poseidon', name: 'Capricorn' },
         { key: 'mjolnir', name: 'Sentry' }, { key: 'mjolnir', name: 'Sentry' }],
     },
-    objective: { kind: 'raid', targets: ['Capricorn'] },
+    objective: { kind: 'raid', targets: ['Boadicea', 'Capricorn'] },
   },
   {
     id: 'SM1-03', title: 'The Romans Blunder', act: 'ACT I', where: 'Deneb–Sirius jump route',
