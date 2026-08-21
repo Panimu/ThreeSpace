@@ -2,9 +2,22 @@ import Phaser from 'phaser';
 import {
   SHIPS, STRIKECRAFT, CIVILIANS, WEAPONS, armamentSummary, complementSummary,
 } from '../ships.js';
-import { ensureStarfield, TEXT_RES } from '../fx.js';
+import { ensureStarfield, TEXT_RES, factionColor } from '../fx.js';
 
 const HP_COLORS = { spinal: 0xffb454, turret: 0x6fb7ff };
+
+// Canonical faction order and display label for every faction-grouped table
+// below (ships, support hulls, strike craft, weapons). A faction absent from
+// a given catalog — Unknown in WEAPONS, say — is skipped, not shown empty.
+const FACTION_ORDER = ['GTVA', 'Vasudan (allied)', 'NTF', 'Shivan', 'Unknown'];
+const FACTION_LABEL = {
+  GTVA: 'TERRAN \u2014 GTVA',
+  'Vasudan (allied)': 'VASUDAN (ALLIED)',
+  NTF: 'NEO-TERRAN FRONT',
+  Shivan: 'SHIVAN',
+  Unknown: 'UNKNOWN',
+};
+const hexColor = (n) => `#${n.toString(16).padStart(6, '0')}`;
 const SECTIONS = ['CONTROLS', 'SHIPS', 'CRAFT', 'WEAPONS', 'ASSETS'];
 const TOP = 92; // first pixel of scrollable content
 
@@ -208,6 +221,28 @@ export class WikiScene extends Phaser.Scene {
     return y + 20;
   }
 
+  // Splits a catalog into faction groups, in FACTION_ORDER, so a table with
+  // GTVA/Vasudan/NTF/Shivan entries can be walked one faction at a time.
+  groupByFaction(catalog) {
+    const groups = new Map();
+    for (const entry of Object.entries(catalog)) {
+      const faction = entry[1].faction;
+      if (!groups.has(faction)) groups.set(faction, []);
+      groups.get(faction).push(entry);
+    }
+    return FACTION_ORDER.filter((f) => groups.has(f)).map((f) => [f, groups.get(f)]);
+  }
+
+  // A secondary heading, one level under heading() and tinted to the
+  // faction's in-battle accent colour so CONTROLS, SHIPS and CRAFT all read
+  // the same hostile-orange / allied-blue / Vasudan-gold logic.
+  factionHeading(y, faction, count) {
+    const color = hexColor(factionColor({ faction }));
+    this.text(26, y + 4, `${FACTION_LABEL[faction] ?? faction.toUpperCase()}  \u00b7  ${count}`,
+      10, color, { ls: 1 });
+    return y + 22;
+  }
+
   // ---- CONTROLS: the annotated battle screen -----------------------------
 
   buildControls() {
@@ -361,12 +396,14 @@ export class WikiScene extends Phaser.Scene {
     const narrow = w < 620;
     let y = 0;
     y = this.heading(y, `CAPITAL SHIPS — ${Object.keys(SHIPS).length} HULLS`);
-    for (const [key, ship] of Object.entries(SHIPS)) {
-      y += this.shipEntry(key, ship, y, narrow);
+    for (const [faction, entries] of this.groupByFaction(SHIPS)) {
+      y = this.factionHeading(y, faction, entries.length);
+      for (const [key, ship] of entries) y += this.shipEntry(key, ship, y, narrow);
     }
     y = this.heading(y + 10, `SUPPORT AND INSTALLATIONS — ${Object.keys(CIVILIANS).length} HULLS`);
-    for (const [key, ship] of Object.entries(CIVILIANS)) {
-      y += this.shipEntry(key, ship, y, narrow);
+    for (const [faction, entries] of this.groupByFaction(CIVILIANS)) {
+      y = this.factionHeading(y, faction, entries.length);
+      for (const [key, ship] of entries) y += this.shipEntry(key, ship, y, narrow);
     }
     return y;
   }
@@ -431,25 +468,28 @@ export class WikiScene extends Phaser.Scene {
       10, '#8593a6', { wrap: w - 40 });
     y += narrow ? 34 : 24;
 
-    for (const [key, c] of Object.entries(STRIKECRAFT)) {
-      const sprite = this.add.image(narrow ? 62 : 74, 0, `ship_${key}`);
-      sprite.setScale(Math.min(44 / sprite.height, 92 / sprite.width, 2.2));
-      this.list.add(sprite);
+    for (const [faction, entries] of this.groupByFaction(STRIKECRAFT)) {
+      y = this.factionHeading(y, faction, entries.length);
+      for (const [key, c] of entries) {
+        const sprite = this.add.image(narrow ? 62 : 74, 0, `ship_${key}`);
+        sprite.setScale(Math.min(44 / sprite.height, 92 / sprite.width, 2.2));
+        this.list.add(sprite);
 
-      const tx = narrow ? 116 : 136;
-      const wrap = w - tx - 34;
-      this.text(tx, y + 8, c.name.toUpperCase(), 12,
-        c.faction === 'Shivan' ? '#ff8a7a' : '#d8e2ee', { ls: 1 });
-      this.text(tx, y + 24, `${c.cls} · ${c.faction}`, 9, '#6fb7ff');
-      const bomb = c.bomb ? `   TORPEDO ${c.bomb.damage} dmg / ${(c.bomb.delay / 1000).toFixed(0)}s` : '';
-      const stats = this.text(tx, y + 38,
-        `${c.length} m   HULL ${c.hull}   SPEED ${c.speed}   TURN ${c.turn}°/s`
-        + `\nGUN ${c.gun.damage} dmg${bomb}`, 9, '#8593a6', { wrap });
-      const rowH = Math.max(38 + stats.height + 14, 60);
-      const card = this.card(y, rowH - 8, c.faction === 'Shivan' ? 0x5c2a2a : 0x1d2635);
-      this.list.sendToBack(card);
-      sprite.setPosition(sprite.x, y + (rowH - 8) / 2);
-      y += rowH;
+        const tx = narrow ? 116 : 136;
+        const wrap = w - tx - 34;
+        this.text(tx, y + 8, c.name.toUpperCase(), 12,
+          c.faction === 'Shivan' ? '#ff8a7a' : '#d8e2ee', { ls: 1 });
+        this.text(tx, y + 24, `${c.cls} · ${c.faction}`, 9, '#6fb7ff');
+        const bomb = c.bomb ? `   TORPEDO ${c.bomb.damage} dmg / ${(c.bomb.delay / 1000).toFixed(0)}s` : '';
+        const stats = this.text(tx, y + 38,
+          `${c.length} m   HULL ${c.hull}   SPEED ${c.speed}   TURN ${c.turn}°/s`
+          + `\nGUN ${c.gun.damage} dmg${bomb}`, 9, '#8593a6', { wrap });
+        const rowH = Math.max(38 + stats.height + 14, 60);
+        const card = this.card(y, rowH - 8, c.faction === 'Shivan' ? 0x5c2a2a : 0x1d2635);
+        this.list.sendToBack(card);
+        sprite.setPosition(sprite.x, y + (rowH - 8) / 2);
+        y += rowH;
+      }
     }
     return y;
   }
@@ -467,23 +507,26 @@ export class WikiScene extends Phaser.Scene {
     y += narrow ? 46 : 34;
 
     const rowH = narrow ? 54 : 34;
-    for (const [, weapon] of Object.entries(WEAPONS)) {
-      this.card(y, rowH - 6, weapon.beam ? 0x2b4a3a : 0x1d2635);
-      const tags = [
-        weapon.type === 'spinal' ? 'SPINAL' : 'TURRET',
-        weapon.beam ? 'BEAM' : 'PROJECTILE',
-        ...(weapon.slash ? ['SLASH'] : []),
-        ...(weapon.anti ? ['ANTI-FIGHTER'] : []),
-        ...(weapon.burst ? ['FLAK'] : []),
-      ].join(' · ');
-      this.text(30, y + 6, weapon.name.toUpperCase(), 11,
-        weapon.beam ? '#8fd8a4' : '#d8e2ee', { ls: 1 });
-      this.text(30, y + 21, tags, 9, '#5a6678');
-      const stats = `${weapon.damage} DMG   ${weapon.range} RANGE   `
-        + `${(weapon.delay / 1000).toFixed(1)}s RELOAD`;
-      this.text(narrow ? 30 : w - 34, narrow ? y + 33 : y + 12, stats, 10, '#8593a6',
-        { ox: narrow ? 0 : 1 });
-      y += rowH;
+    for (const [faction, entries] of this.groupByFaction(WEAPONS)) {
+      y = this.factionHeading(y, faction, entries.length);
+      for (const [, weapon] of entries) {
+        this.card(y, rowH - 6, weapon.beam ? 0x2b4a3a : 0x1d2635);
+        const tags = [
+          weapon.type === 'spinal' ? 'SPINAL' : 'TURRET',
+          weapon.beam ? 'BEAM' : 'PROJECTILE',
+          ...(weapon.slash ? ['SLASH'] : []),
+          ...(weapon.anti ? ['ANTI-FIGHTER'] : []),
+          ...(weapon.burst ? ['FLAK'] : []),
+        ].join(' · ');
+        this.text(30, y + 6, weapon.name.toUpperCase(), 11,
+          weapon.beam ? '#8fd8a4' : '#d8e2ee', { ls: 1 });
+        this.text(30, y + 21, tags, 9, '#5a6678');
+        const stats = `${weapon.damage} DMG   ${weapon.range} RANGE   `
+          + `${(weapon.delay / 1000).toFixed(1)}s RELOAD`;
+        this.text(narrow ? 30 : w - 34, narrow ? y + 33 : y + 12, stats, 10, '#8593a6',
+          { ox: narrow ? 0 : 1 });
+        y += rowH;
+      }
     }
     return y;
   }
