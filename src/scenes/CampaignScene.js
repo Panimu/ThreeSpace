@@ -146,7 +146,9 @@ export class CampaignScene extends Phaser.Scene {
     saveCampaign(this.state);
     this.scene.start('sandbox', {
       player: picked.map((s) => ({ key: s.key, name: s.name, hull: s.hull, deadMounts: [...s.deadMounts] })),
-      enemy: mission.enemy.map((key, i) => ({ key, name: mission.names?.B?.[i] })),
+      // `enemy` already carries { key, name } records straight from the canon
+      // roster — wrapping them again buries the key one level down.
+      enemy: mission.enemy.map((e) => ({ ...e })),
       mission,
     });
   }
