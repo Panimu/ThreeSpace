@@ -3,6 +3,7 @@ import { ensureNebula, ensureStarfield, ensureBeamTextures, TEXT_RES } from '../
 import { TitleBattle } from '../titlebattle.js';
 import { loadCampaign } from '../campaignState.js';
 import { version } from '../../package.json';
+import { BUILD_VERSION, updateReady, checkForUpdate, applyUpdate } from '../update.js';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -50,9 +51,14 @@ export class TitleScene extends Phaser.Scene {
         () => this.scene.start(targets[label]));
     });
 
-    this.add.text(w() - 12, h() - 10, `v${version}`, {
+    this.add.text(w() - 12, h() - 10, `v${version} · ${BUILD_VERSION}`, {
       fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 11, color: '#5a6678',
     }).setOrigin(1, 1);
+
+    // The safe point. A new build may have been sitting in the cache for a
+    // whole campaign — this is the first moment since it landed that reloading
+    // costs the player nothing, so it is the first moment we mention it.
+    this.offerUpdate();
 
     this.input.keyboard.on('keydown-ENTER', () => this.scene.start('campaign'));
 
@@ -63,6 +69,41 @@ export class TitleScene extends Phaser.Scene {
     };
     this.scale.on('resize', onResize);
     this.events.once('shutdown', () => this.scale.off('resize', onResize));
+  }
+
+  // Offers a waiting update, if there is one. Only ever called from create():
+  // reaching the title screen means no battle, no briefing and no refit is in
+  // progress, so a reload here throws nothing away.
+  offerUpdate() {
+    // This scene instance is reused across scene.start() and restarted on
+    // orientation change, so an async check from a previous run must not draw
+    // onto a later one. Each run takes a token and only the current one draws.
+    const run = this.offerRun = (this.offerRun ?? 0) + 1;
+    const show = (pending) => {
+      if (run !== this.offerRun) return;
+      const w = this.scale.width, h = this.scale.height;
+      const label = this.add.text(12, h - 10, `UPDATE READY · ${pending} · TAP`, {
+        fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 11,
+        color: '#ffb454', letterSpacing: 1,
+      }).setOrigin(0, 1).setDepth(5);
+      // Generous hit area — it sits in the corner and the text itself is small.
+      this.add.rectangle(6, h - 26, Math.min(w - 24, label.width + 16), 24, 0xffb454, 0.001)
+        .setOrigin(0, 0).setDepth(5).setInteractive({ useHandCursor: true })
+        .on('pointerdown', () => applyUpdate());
+      this.tweens.add({
+        targets: label, alpha: 0.45, duration: 1100, yoyo: true, repeat: -1,
+      });
+    };
+
+    const pending = updateReady();
+    if (pending) { show(pending); return; }
+    // Nothing known yet — but arriving here is itself a good moment to look,
+    // so a deploy that landed mid-session is offered now rather than after the
+    // next poll. The banner just fades in a beat later if one turns up.
+    checkForUpdate().then(() => {
+      const found = updateReady();
+      if (found) show(found);
+    });
   }
 
   makeButton(x, y, label, onClick) {

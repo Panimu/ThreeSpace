@@ -25,6 +25,18 @@ There is no test suite or linter yet.
   flag (`reportShown`, `applied`, `confirming`) and every engine time scale
   must be reset in `create()`, or the second run inherits the first's state.
   Three shipped bugs came from exactly this.
+- **Updates are deferred, never forced.** `vite.config.js` stamps the build
+  from `git rev-list --count HEAD` plus the short SHA into `__BUILD_VERSION__`
+  (a compile-time constant — the game never looks it up at runtime) and emits
+  the same stamp to `dist/version.json`. `src/update.js` polls that file in the
+  background and *only sets a flag*: it must never prompt, reload, or touch a
+  scene. `TitleScene.offerUpdate()` is the sole place the offer appears,
+  because the title screen is the only screen with nothing in progress — a
+  battle lives entirely in memory and the campaign only persists when a mission
+  ends, so a reload anywhere else destroys the player's session. Nothing is
+  lost by waiting: the new bundle is warmed into the HTTP cache when it is
+  first noticed. A dirty tree, shallow clone or missing git stamps `dev build`,
+  which suppresses polling outright so a working copy never nags.
 - Scenes: `BootScene` (loads the manifest behind a progress bar; owns all asset
   loading) → `TitleScene` (menu over a live attract battle) →
   `SelectScene` (fleet setup: up to 3 capitals per side, or a random faction

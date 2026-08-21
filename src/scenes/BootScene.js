@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { IMAGES, resolveUrl } from '../manifest.js';
 import { TEXT_RES } from '../fx.js';
 import { version } from '../../package.json';
+import { BUILD_VERSION } from '../update.js';
 
 // Boot: loads every sprite in the manifest behind a progress bar, so the game
 // opens on something deliberate instead of a blank canvas. Owns all asset
@@ -28,7 +29,7 @@ export class BootScene extends Phaser.Scene {
       fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 11, color: '#5a6678',
       letterSpacing: 2,
     }).setOrigin(0.5, 0);
-    this.add.text(w - 12, h - 10, `v${version}`, {
+    this.add.text(w - 12, h - 10, `v${version} · ${BUILD_VERSION}`, {
       fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 11, color: '#3a4354',
     }).setOrigin(1, 1);
 
