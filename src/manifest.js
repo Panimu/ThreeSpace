@@ -40,12 +40,11 @@ for (const [key, craft] of Object.entries(STRIKECRAFT)) {
   };
 }
 
-// Effect art sliced from the ordnance sheet (assets/fx/): beam bodies, bolt
-// cores, and the flak burst. Referenced from WEAPONS via bolt/beamTex keys.
+// Effect art sliced from the ordnance sheet (assets/fx/): bolt cores and the
+// flak burst. Referenced from WEAPONS via `bolt` keys. Beams are procedural
+// (see src/ships.js) — the sheet's beam_*.png samples stay on disk as
+// palette/shape reference but are not loaded into the game.
 const FX = [
-  'beam_sred', 'beam_lred', 'beam_bfred', 'beam_saaa', 'beam_sgreen',
-  'beam_bgreen', 'beam_bfgreen', 'beam_lterslash', 'beam_terslash',
-  'beam_vslash', 'beam_aaa', 'beam_svas', 'beam_bvas', 'beam_superlaser',
   'bolt_subach', 'bolt_terranhuge', 'bolt_vasudan', 'bolt_shivan',
   'bolt_mekhu', 'bolt_shivanlight', 'bolt_shivanheavy',
   'bolt_terranweak', 'bolt_shivanweak',

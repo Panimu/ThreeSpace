@@ -718,15 +718,13 @@ export class SandboxScene extends Phaser.Scene {
       charge: weapon.chargeMs ?? BEAM_CHARGE,
       hold: weapon.holdMs ?? BEAM_HOLD,
       elapsed: 0, pixelPool: 0, connected: false, lastSpark: 0, fired: false,
-      // Sheet beam art (muzzle at the image's left edge) replaces the three
-      // generated glow strips when the weapon has one.
-      body: weapon.beamTex
-        ? this.add.image(0, 0, weapon.beamTex).setOrigin(0, 0.5)
-          .setBlendMode(Phaser.BlendModes.ADD).setDepth(4).setVisible(false)
-        : null,
-      halo: weapon.beamTex ? null : strip('beam-halo', 4, palette.outer),
-      mid: weapon.beamTex ? null : strip('beam-halo', 4, palette.mid),
-      core: weapon.beamTex ? null : strip('beam-core', 5, 0xffffff),
+      // Procedural gradient strips — a solid colour fading to transparent
+      // across the beam's width, constant along its length — layered outer
+      // glow, tinted mid glow and a white core. Being a pure gradient, this
+      // stretches cleanly to any beam length with no visible seam.
+      halo: strip('beam-halo', 4, palette.outer),
+      mid: strip('beam-halo', 4, palette.mid),
+      core: strip('beam-core', 5, 0xffffff),
       flare: strip('beam-halo', 5, palette.mid), // fat cone at the muzzle
       muzzle: orb(0xffffff),
       impact: orb(palette.mid),
@@ -758,8 +756,7 @@ export class SandboxScene extends Phaser.Scene {
   }
 
   beamParts(beam) {
-    return [beam.body, beam.halo, beam.mid, beam.core, beam.flare, beam.muzzle, beam.impact]
-      .filter(Boolean);
+    return [beam.halo, beam.mid, beam.core, beam.flare, beam.muzzle, beam.impact];
   }
 
   updateBeams(delta, time) {
@@ -839,15 +836,14 @@ export class SandboxScene extends Phaser.Scene {
       const place = (img, height, alpha, len = length) => img.setVisible(true)
         .setPosition(pos.x, pos.y).setRotation(dir)
         .setDisplaySize(len, height).setAlpha(alpha);
-      if (beam.body) {
-        // The ordnance sheet's own beam art, stretched muzzle-to-impact.
-        place(beam.body, (weapon.beamWidth ?? 24) * (0.85 + 0.3 * power), Math.min(1, 0.35 + 0.65 * power));
-      } else {
-        // Fallback: generated glow strips (outer → inner → white core).
-        place(beam.halo, 74 * power, 0.7 * power);
-        place(beam.mid, 34 * power, 0.85 * power);
-        place(beam.core, 9 * power, power);
-      }
+      // Width scales off the weapon's own beamWidth so an AAAf point-defence
+      // beam reads thin next to a BFRed spinal — outer glow, tinted mid glow,
+      // white core, roughly the FS2 8:4:1 ratio.
+      const bw = (weapon.beamWidth ?? 20) / 20;
+      const flicker = 0.92 + 0.08 * Math.sin(time / 35 + pos.x * 0.01 + pos.y * 0.01);
+      place(beam.halo, 74 * bw * power, 0.7 * power);
+      place(beam.mid, 34 * bw * power * flicker, 0.85 * power);
+      place(beam.core, 9 * bw * power * flicker, Math.min(1, power * (1.04 - 0.08 * flicker)));
       place(beam.flare, 90 * power, 0.9 * power, 150); // eruption cone at the muzzle
       beam.muzzle.setVisible(true).setPosition(pos.x, pos.y)
         .setDisplaySize(120 * power, 120 * power).setAlpha(power);

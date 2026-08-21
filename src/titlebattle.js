@@ -118,6 +118,9 @@ export class TitleBattle {
       const size = target.size;
       const across = bearing + Math.PI / 2;
       const sign = Math.random() < 0.5 ? 1 : -1;
+      const palette = beamPalette(ship.spec);
+      const strip = (tex, tint) => this.scene.add.image(pos.x, pos.y, tex)
+        .setOrigin(0, 0.5).setBlendMode(Phaser.BlendModes.ADD).setTint(tint).setVisible(false);
       const beam = {
         ship, target, weapon, point,
         elapsed: 0,
@@ -125,9 +128,14 @@ export class TitleBattle {
         hold: weapon.holdMs ?? 2200,
         hit: Math.random() < 0.8,
         off: { x: 0, y: 0 },
-        img: null,
+        // Layered gradient strips, same as the sandbox battle beams: an outer
+        // glow, a faction-tinted mid glow, and a white core. All three stretch
+        // cleanly to any length since they're pure width-wise gradients.
+        halo: strip('beam-halo', palette.outer),
+        mid: strip('beam-halo', palette.mid),
+        core: strip('beam-core', 0xffffff),
         glow: this.scene.add.image(pos.x, pos.y, 'glow-orb')
-          .setBlendMode(Phaser.BlendModes.ADD).setTint(beamPalette(ship.spec).mid),
+          .setBlendMode(Phaser.BlendModes.ADD).setTint(palette.mid),
         muzzle: this.scene.add.image(pos.x, pos.y, 'glow-orb')
           .setBlendMode(Phaser.BlendModes.ADD).setTint(0xffffff),
       };
@@ -138,6 +146,9 @@ export class TitleBattle {
         const missBy = size * (0.55 + Math.random() * 0.3);
         beam.off = { x: Math.cos(across) * missBy * sign, y: Math.sin(across) * missBy * sign };
       }
+      this.root.add(beam.halo);
+      this.root.add(beam.mid);
+      this.root.add(beam.core);
       this.root.add(beam.glow);
       this.root.add(beam.muzzle);
       this.beams.push(beam);
@@ -334,7 +345,9 @@ export class TitleBattle {
       const { ship, target, weapon } = beam;
       const done = beam.elapsed > beam.charge + beam.hold + 250;
       if (done || !ship.img.active) {
-        beam.img?.destroy();
+        beam.halo.destroy();
+        beam.mid.destroy();
+        beam.core.destroy();
         beam.glow.destroy();
         beam.muzzle.destroy();
         return false;
@@ -371,15 +384,12 @@ export class TitleBattle {
       const length = target.img.active
         ? Phaser.Math.Distance.Between(pos.x, pos.y, target.img.x, target.img.y) + (onHull ? 0 : 400)
         : weapon.range;
-      if (!beam.img) {
-        beam.img = this.scene.add.image(0, 0, weapon.beamTex ?? 'beam-core')
-          .setOrigin(0, 0.5).setBlendMode(Phaser.BlendModes.ADD)
-          .setTint(weapon.beamTex ? 0xffffff : beamPalette(ship.spec).outer);
-        this.root.add(beam.img);
-      }
-      beam.img.setPosition(pos.x, pos.y).setRotation(dir)
-        .setDisplaySize(length, (weapon.beamWidth ?? 20) * (0.85 + 0.3 * power))
-        .setAlpha(Math.min(1, 0.35 + 0.65 * power));
+      const bw = (weapon.beamWidth ?? 20) / 20;
+      const place = (img, height, alpha) => img.setVisible(true)
+        .setPosition(pos.x, pos.y).setRotation(dir).setDisplaySize(length, height).setAlpha(alpha);
+      place(beam.halo, 74 * bw * power, 0.7 * power);
+      place(beam.mid, 34 * bw * power, 0.85 * power);
+      place(beam.core, 9 * bw * power, power);
       beam.muzzle.setDisplaySize(90 * power, 90 * power).setAlpha(power);
       if (onHull && beam.hit !== false && burnT <= 1) {
         this.damage(target, weapon.damage * (delta / beam.hold),

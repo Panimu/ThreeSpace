@@ -26,7 +26,12 @@
 // guts but doesn't one-shot a Colossus, exactly as in the game.
 // `slash: true` beams rake across the hull (retail slash beams are
 // TerSlash/LTerSlash/VSlash; SVas is a direct beam). `anti: true` mounts
-// prefer strike-craft targets. `bolt`/`beamTex` reference ordnance-sheet art.
+// prefer strike-craft targets. `bolt` references ordnance-sheet art for
+// projectiles. Beams render as procedural gradient strips, not sheet art —
+// the sheet's beam samples are short (150-330px) hand-shaded reference
+// images, not tileable rays, and stretching one 5-15x to a beam's real range
+// smeared its shading into visible seams. `beamWidth` sets how thick that
+// gradient draws, so a point-defence beam still reads thinner than a spinal.
 export const WEAPONS = {
   // ---- Terran ----
   terranTurret: { faction: 'GTVA', name: 'Terran turret', type: 'turret', damage: 10, range: 850, delay: 8500, speed: 420, bolt: 'fx_bolt_subach' },
@@ -36,27 +41,27 @@ export const WEAPONS = {
   longFlak:     { faction: 'GTVA', name: 'Long-range flak', type: 'turret', damage: 6, range: 900, delay: 2200, speed: 400, bolt: 'fx_bolt_subach', burst: true, anti: true },
   heavyFlak:    { faction: 'GTVA', name: 'Heavy flak', type: 'turret', damage: 9, range: 800, delay: 2800, speed: 380, bolt: 'fx_bolt_subach', burst: true, anti: true },
   fighterKiller:{ faction: 'GTVA', name: 'Fighter-killer missiles', type: 'turret', damage: 20, range: 950, delay: 9000, speed: 300, bolt: 'fx_bolt_terranweak', anti: true },
-  aaaf:         { faction: 'GTVA', name: 'AAAf beam', type: 'turret', damage: 36, range: 950, delay: 7000, speed: 0, beam: true, anti: true, chargeMs: 600, holdMs: 1000, beamTex: 'fx_beam_aaa', beamWidth: 14 },
-  terslash:     { faction: 'GTVA', name: 'TerSlash beam', type: 'turret', damage: 130, range: 1600, delay: 14000, speed: 0, beam: true, slash: true, chargeMs: 1400, holdMs: 2000, beamTex: 'fx_beam_terslash', beamWidth: 20 },
-  lterslash:    { faction: 'GTVA', name: 'LTerSlash beam', type: 'spinal', damage: 80, range: 1600, delay: 12000, speed: 0, beam: true, slash: true, chargeMs: 1200, holdMs: 1800, beamTex: 'fx_beam_lterslash', beamWidth: 16 },
-  sgreen:       { faction: 'GTVA', name: 'SGreen beam', type: 'spinal', damage: 110, range: 1600, delay: 30000, speed: 0, beam: true, chargeMs: 1800, holdMs: 2500, beamTex: 'fx_beam_sgreen', beamWidth: 18 },
-  bgreen:       { faction: 'GTVA', name: 'BGreen beam', type: 'spinal', damage: 320, range: 1600, delay: 30000, speed: 0, beam: true, holdMs: 4000, beamTex: 'fx_beam_bgreen', beamWidth: 24 },
-  bfgreen:      { faction: 'GTVA', name: 'BFGreen beam', type: 'spinal', damage: 480, range: 1700, delay: 35000, speed: 0, beam: true, holdMs: 4000, beamTex: 'fx_beam_bfgreen', beamWidth: 30 },
+  aaaf:         { faction: 'GTVA', name: 'AAAf beam', type: 'turret', damage: 36, range: 950, delay: 7000, speed: 0, beam: true, anti: true, chargeMs: 600, holdMs: 1000, beamWidth: 14 },
+  terslash:     { faction: 'GTVA', name: 'TerSlash beam', type: 'turret', damage: 130, range: 1600, delay: 14000, speed: 0, beam: true, slash: true, chargeMs: 1400, holdMs: 2000, beamWidth: 20 },
+  lterslash:    { faction: 'GTVA', name: 'LTerSlash beam', type: 'spinal', damage: 80, range: 1600, delay: 12000, speed: 0, beam: true, slash: true, chargeMs: 1200, holdMs: 1800, beamWidth: 16 },
+  sgreen:       { faction: 'GTVA', name: 'SGreen beam', type: 'spinal', damage: 110, range: 1600, delay: 30000, speed: 0, beam: true, chargeMs: 1800, holdMs: 2500, beamWidth: 18 },
+  bgreen:       { faction: 'GTVA', name: 'BGreen beam', type: 'spinal', damage: 320, range: 1600, delay: 30000, speed: 0, beam: true, holdMs: 4000, beamWidth: 24 },
+  bfgreen:      { faction: 'GTVA', name: 'BFGreen beam', type: 'spinal', damage: 480, range: 1700, delay: 35000, speed: 0, beam: true, holdMs: 4000, beamWidth: 30 },
   // ---- Vasudan ----
   vasudanTurret:{ faction: 'Vasudan (allied)', name: 'Vasudan turret', type: 'turret', damage: 10, range: 850, delay: 8500, speed: 420, bolt: 'fx_bolt_vasudan' },
-  svas:         { faction: 'Vasudan (allied)', name: 'SVas beam', type: 'turret', damage: 170, range: 1600, delay: 20000, speed: 0, beam: true, chargeMs: 1400, holdMs: 2500, beamTex: 'fx_beam_svas', beamWidth: 20 },
-  vslash:       { faction: 'Vasudan (allied)', name: 'VSlash beam', type: 'turret', damage: 125, range: 1600, delay: 14000, speed: 0, beam: true, slash: true, chargeMs: 1400, holdMs: 2000, beamTex: 'fx_beam_vslash', beamWidth: 20 },
-  bvas:         { faction: 'Vasudan (allied)', name: 'BVas beam', type: 'spinal', damage: 310, range: 1600, delay: 24000, speed: 0, beam: true, holdMs: 3700, beamTex: 'fx_beam_bvas', beamWidth: 24 },
+  svas:         { faction: 'Vasudan (allied)', name: 'SVas beam', type: 'turret', damage: 170, range: 1600, delay: 20000, speed: 0, beam: true, chargeMs: 1400, holdMs: 2500, beamWidth: 20 },
+  vslash:       { faction: 'Vasudan (allied)', name: 'VSlash beam', type: 'turret', damage: 125, range: 1600, delay: 14000, speed: 0, beam: true, slash: true, chargeMs: 1400, holdMs: 2000, beamWidth: 20 },
+  bvas:         { faction: 'Vasudan (allied)', name: 'BVas beam', type: 'spinal', damage: 310, range: 1600, delay: 24000, speed: 0, beam: true, holdMs: 3700, beamWidth: 24 },
   // ---- Shivan ----
   shivanTurret: { faction: 'Shivan', name: 'Shivan turret laser', type: 'turret', damage: 12, range: 800, delay: 8000, speed: 430, bolt: 'fx_bolt_shivan' },
   shivanHeavy:  { faction: 'Shivan', name: 'Shivan heavy laser', type: 'turret', damage: 20, range: 1000, delay: 12000, speed: 350, bolt: 'fx_bolt_shivanheavy' },
   shivanFlak:   { faction: 'Shivan', name: 'Shivan flak', type: 'turret', damage: 5, range: 650, delay: 1500, speed: 380, bolt: 'fx_bolt_shivan', burst: true, anti: true },
   shivanCluster:{ faction: 'Shivan', name: 'Shivan cluster missiles', type: 'turret', damage: 18, range: 900, delay: 8000, speed: 300, bolt: 'fx_bolt_shivanweak', anti: true },
-  saaa:         { faction: 'Shivan', name: 'SAAA beam', type: 'turret', damage: 34, range: 950, delay: 7000, speed: 0, beam: true, anti: true, chargeMs: 600, holdMs: 1200, beamTex: 'fx_beam_saaa', beamWidth: 14 },
-  sred:         { faction: 'Shivan', name: 'SRed beam', type: 'spinal', damage: 150, range: 1600, delay: 25000, speed: 0, beam: true, holdMs: 3800, beamTex: 'fx_beam_sred', beamWidth: 22 },
-  lred:         { faction: 'Shivan', name: 'LRed beam', type: 'spinal', damage: 320, range: 1600, delay: 22000, speed: 0, beam: true, holdMs: 6000, beamTex: 'fx_beam_lred', beamWidth: 28 },
-  bfred:        { faction: 'Shivan', name: 'BFRed beam', type: 'spinal', damage: 620, range: 2200, delay: 30000, speed: 0, beam: true, holdMs: 6000, beamTex: 'fx_beam_bfred', beamWidth: 32 },
-  superlaser:   { faction: 'Shivan', name: 'Shivan super laser', type: 'spinal', damage: 480, range: 1900, delay: 32000, speed: 0, beam: true, holdMs: 5000, beamTex: 'fx_beam_superlaser', beamWidth: 30 },
+  saaa:         { faction: 'Shivan', name: 'SAAA beam', type: 'turret', damage: 34, range: 950, delay: 7000, speed: 0, beam: true, anti: true, chargeMs: 600, holdMs: 1200, beamWidth: 14 },
+  sred:         { faction: 'Shivan', name: 'SRed beam', type: 'spinal', damage: 150, range: 1600, delay: 25000, speed: 0, beam: true, holdMs: 3800, beamWidth: 22 },
+  lred:         { faction: 'Shivan', name: 'LRed beam', type: 'spinal', damage: 320, range: 1600, delay: 22000, speed: 0, beam: true, holdMs: 6000, beamWidth: 28 },
+  bfred:        { faction: 'Shivan', name: 'BFRed beam', type: 'spinal', damage: 620, range: 2200, delay: 30000, speed: 0, beam: true, holdMs: 6000, beamWidth: 32 },
+  superlaser:   { faction: 'Shivan', name: 'Shivan super laser', type: 'spinal', damage: 480, range: 1900, delay: 32000, speed: 0, beam: true, holdMs: 5000, beamWidth: 30 },
 };
 
 const hp = (type, fitted, x, y) => ({ type, fitted, x, y });

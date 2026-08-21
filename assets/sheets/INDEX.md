@@ -92,8 +92,12 @@ cluster etc.), primary shot cores (Subach, Prometheus, Maxim, Kayser, faction
 lasers…), turret projectiles, flak bursts, and ~20 beam samples at a 100 m
 pulse reference — SRed/LRed/BFRed, SGreen/BGreen/BFGreen/LRBGreen, slash
 beams, AAA beams, Mjolnir beams, Vasudan beams, Shivan Super Laser — with
-range/type table. Use as the palette/shape reference for in-game projectile
-and beam rendering (our beams are procedural; match them to these samples).
+range/type table. Bolt cores and the flak burst are sliced and loaded at
+runtime. The beam samples are palette/shape reference only, not loaded:
+each is a short (150-330 px) hand-shaded render, and stretching one 5-15x
+to a beam's actual 950-2200 range smears its shading into visible seams —
+in-game beams are procedural gradient strips instead, tinted per faction
+and sized off each weapon's `beamWidth`.
 
 ## Extraction notes (next step)
 - Chart-background sheets: background is near-uniform dark navy with faint

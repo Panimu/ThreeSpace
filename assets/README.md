@@ -26,7 +26,7 @@ Sliced game-ready sprites:
 - `ships/ntf/` — the red-trim Neo-Terran Front named variants (Iceni,
   Belisarius, Repulse, Carthage, Glorious, Impervious) from the same sheet.
 - `ships/other/` — the Knossos portal.
-- `fx/` — beam bodies, bolt cores, flak burst cut from the ordnance sheet.
+- `fx/` — bolt cores and flak burst cut from the ordnance sheet, loaded at runtime. The sheet's beam_*.png slices stay here as reference art only — beams render as procedural gradients (src/ships.js), not stretched sheet art, because the samples are too short to stretch across a real beam range without visible seams.
 
 Campaign reference material lives in `docs/` — see `docs/README.md`. The
 clean-room reconstruction there is an index of campaign *structure* (rosters,
