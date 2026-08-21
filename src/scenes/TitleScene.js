@@ -1,17 +1,12 @@
 import Phaser from 'phaser';
-import { IMAGES, resolveUrl } from '../manifest.js';
 import { ensureNebula, ensureStarfield, ensureBeamTextures, TEXT_RES } from '../fx.js';
 import { TitleBattle } from '../titlebattle.js';
+import { loadCampaign } from '../campaignState.js';
 import { version } from '../../package.json';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
     super('title');
-  }
-
-  preload() {
-    // The title preloads everything so Sandbox/Wiki start instantly.
-    for (const [key, def] of Object.entries(IMAGES)) this.load.image(key, resolveUrl(def.url));
   }
 
   create() {
@@ -32,7 +27,9 @@ export class TitleScene extends Phaser.Scene {
     // orientation change re-lays it out via a debounced restart.
     const narrow = Math.min(w(), 520);
     const titleSize = Math.min(56, Math.floor(narrow / 8));
-    const buttons = ['CAMPAIGN', 'SANDBOX', 'REFIT', 'WIKI'];
+    // A campaign already under way is offered as CONTINUE.
+    const inProgress = !!loadCampaign()?.completed?.length;
+    const buttons = [inProgress ? 'CONTINUE' : 'CAMPAIGN', 'SANDBOX', 'REFIT', 'WIKI'];
     const gap = Math.min(62, Math.max(52, h() / 11));
 
     // Centre the whole stack — title plus buttons — in the screen.
@@ -44,7 +41,10 @@ export class TitleScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     const buttonsTop = titleY + titleSize * 0.6 + 52;
-    const targets = { CAMPAIGN: 'campaign', SANDBOX: 'select', REFIT: 'refit', WIKI: 'wiki' };
+    const targets = {
+      CAMPAIGN: 'campaign', CONTINUE: 'campaign',
+      SANDBOX: 'select', REFIT: 'refit', WIKI: 'wiki',
+    };
     buttons.forEach((label, i) => {
       this.makeButton(w() / 2, buttonsTop + gap * i, label,
         () => this.scene.start(targets[label]));

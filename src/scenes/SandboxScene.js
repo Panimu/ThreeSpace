@@ -48,6 +48,10 @@ const LAUNCH_EVERY = 9000;
 // Wing orders — the whole friendly air group follows one standing order.
 const ORDERS = ['engage', 'strike', 'screen'];
 
+// Battle speed. FS2 pacing is deliberate by design, which is exactly why a
+// fast-forward matters — the reloads are long and some missions are a hold.
+const SPEEDS = [1, 2, 3];
+
 // Fleet orders for the capitals you are NOT conning: hold station on the
 // flag, close and fight independently, or stay out at beam range.
 const FLEET_ORDERS = ['form', 'engage', 'standoff'];
@@ -169,7 +173,19 @@ export class SandboxScene extends Phaser.Scene {
 
     this.createMinimap();
     this.createControls();
+    // Phaser reuses the scene instance across scene.start(), so every flag
+    // that gates a once-per-battle action has to be cleared here or the
+    // second battle inherits the first one's state.
     this.over = false;
+    this.report = null;
+    this.reportShown = false;
+    this.tapCandidate = null;
+    this.lastBeamHitSound = 0;
+    this.quitArmed = 0;
+    this.simNow = 0;
+    this.paused = false;
+    this.speedIdx = 0;
+    this.applySpeed();
 
     const onResize = (s) => {
       this.uiCam.setSize(s.width, s.height);
@@ -1176,6 +1192,11 @@ export class SandboxScene extends Phaser.Scene {
     }).setDepth(21);
     this.uiPlace(this.hud, () => ({ x: 52, y: 8 }));
 
+    this.quitText = this.add.text(0, 0, '', {
+      fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 11, color: '#ff9a6a',
+    }).setOrigin(0.5, 0).setDepth(22);
+    this.uiPlace(this.quitText, (w, h) => ({ x: w / 2, y: h - PANEL_H - 106 }));
+
     this.objText = this.add.text(0, 0, '', {
       fontFamily: 'monospace', resolution: TEXT_RES, fontSize: 12, color: '#ffb454',
     }).setDepth(21);
@@ -1207,12 +1228,17 @@ export class SandboxScene extends Phaser.Scene {
       return t;
     };
 
-    button('✕', () => ({ x: 4, y: 4, w: 40, h: 36 }),
-      () => this.scene.start('title'), { size: 18, color: '#8593a6' });
+    button('✕', () => ({ x: 4, y: 4, w: 40, h: 36 }), () => this.tryQuit(),
+      { size: 18, color: '#8593a6' });
     button('⌖ FOCUS', (w, h) => ({ x: w - 104, y: h - PANEL_H - 44, w: 96, h: 34 }), () => {
       this.cameras.main.startFollow(this.con, false, 0.06, 0.06);
       this.following = true;
     });
+    // Speed and pause sit above FOCUS, clear of the order rows on the left.
+    this.pauseLabel = button('PAUSE', (w, h) => this.pauseRect(h),
+      () => this.togglePause(), { size: 10 });
+    this.speedLabel = button('1x', (w, h) => this.speedRect(h),
+      () => this.cycleSpeed(), { size: 11, color: '#ffcf9a' });
 
     // Fleet tabs: tap to take the con of another ship in your group.
     this.fleetTabs = this.fleets.A.map((ship, i) => button('', (w, h) => this.tabRect(i, w, h),
@@ -1292,7 +1318,7 @@ export class SandboxScene extends Phaser.Scene {
       // The panel strip and minimap are dead zones for camera gestures.
       if (p.y > h - PANEL_H) return;
       if (p.x > w - Math.max(this.mmW, this.contactW()) - 28
-        && p.y < this.contactY() + CONTACT_H + 22) return;
+        && p.y < this.contactY() + CONTACT_H + 22) { this.minimapJump(p); return; }
       // A press that neither travels nor lingers designates a contact.
       this.tapCandidate = { id: p.id, x: p.x, y: p.y, at: this.time.now };
       this.panPointers.set(p.id, { x: p.x, y: p.y });
@@ -1355,8 +1381,54 @@ export class SandboxScene extends Phaser.Scene {
     return { x: 52 + i * (tw + 6), y: this.hudBottom(), w: tw, h: 26 };
   }
 
+  // Mission time runs on the simulated clock, so a fast-forward advances
+  // objectives at the same rate it advances the battle.
   elapsed() {
-    return this.startedAt === null ? 0 : this.time.now - this.startedAt;
+    return this.simNow;
+  }
+
+  // Drive Phaser's own clocks from the speed setting: the scene clock and
+  // tweens run faster directly, arcade physics runs faster as its per-step
+  // budget shrinks. All three persist across scene restarts, so create()
+  // always calls this.
+  applySpeed() {
+    const mult = this.paused ? 0 : SPEEDS[this.speedIdx];
+    this.time.timeScale = mult;
+    this.tweens.timeScale = mult;
+    this.physics.world.timeScale = mult > 0 ? 1 / mult : 1;
+    if (this.paused) this.physics.world.pause();
+    else this.physics.world.resume();
+  }
+
+  // Leaving mid-action throws the battle away, so ask once.
+  tryQuit() {
+    const now = this.game.loop.time;
+    if (now < this.quitArmed) { this.scene.start('title'); return; }
+    this.quitArmed = now + 2600;
+  }
+
+  cycleSpeed() {
+    this.speedIdx = (this.speedIdx + 1) % SPEEDS.length;
+    this.paused = false;
+    this.applySpeed();
+  }
+
+  togglePause() {
+    this.paused = !this.paused;
+    this.applySpeed();
+  }
+
+  // Tapping the minimap jumps the camera there — far quicker than dragging
+  // across a 6000-unit battle area.
+  minimapJump(p) {
+    const w = this.scale.width;
+    const x0 = w - this.mmW - 14, y0 = 14;
+    const fx = (p.x - x0) / this.mmW, fy = (p.y - y0) / this.mmH;
+    if (fx < 0 || fx > 1 || fy < 0 || fy > 1) return false;
+    this.cameras.main.stopFollow();
+    this.following = false;
+    this.cameras.main.centerOn(fx * WORLD_W, fy * WORLD_H);
+    return true;
   }
 
   // Mission objectives. Destroy is the sandbox default and needs no watching;
@@ -1413,6 +1485,10 @@ export class SandboxScene extends Phaser.Scene {
 
   fleetRowY(h) { return h - PANEL_H - 44; }
 
+  pauseRect(h) { return { x: 4, y: h - PANEL_H - 124, w: 52, h: 34 }; }
+
+  speedRect(h) { return { x: 60, y: h - PANEL_H - 124, w: 42, h: 34 }; }
+
   wingRowY(h) { return h - PANEL_H - 84; }
 
   contactY() { return 14 + this.mmH + 8; }
@@ -1457,6 +1533,13 @@ export class SandboxScene extends Phaser.Scene {
     g.lineStyle(1, 0x2b3a52, 1).strokeRect(4, 4, 40, 36);
     g.fillStyle(0x11161f, 0.85).fillRect(w - 104, h - PANEL_H - 44, 96, 34);
     g.lineStyle(1, this.following ? 0x6fb7ff : 0x3a4a62, 1).strokeRect(w - 104, h - PANEL_H - 44, 96, 34);
+    // Pause and speed, above the order rows on the left.
+    const pr = this.pauseRect(h), sr = this.speedRect(h);
+    g.fillStyle(0x11161f, 0.85).fillRect(pr.x, pr.y, pr.w, pr.h);
+    g.lineStyle(1, this.paused ? 0xffb454 : 0x3a4a62, 1).strokeRect(pr.x, pr.y, pr.w, pr.h);
+    g.fillStyle(0x11161f, 0.85).fillRect(sr.x, sr.y, sr.w, sr.h);
+    g.lineStyle(1, this.speedIdx > 0 ? 0xffb454 : 0x3a4a62, 1)
+      .strokeRect(sr.x, sr.y, sr.w, sr.h);
 
     // Fleet tabs (chrome; the tab text lives in fleetTabs).
     this.fleets.A.forEach((ship, i) => {
@@ -1547,10 +1630,15 @@ export class SandboxScene extends Phaser.Scene {
     this.steerCapital(ship, dt);
   }
 
-  update(time, delta) {
-    // The scene clock is only meaningful once the loop is running.
-    if (this.startedAt === null) this.startedAt = time;
+  update(realTime, realDelta) {
+    // The battle runs on its own clock so speed and pause scale the whole
+    // simulation — movement, reloads, beam envelopes and mission timers alike.
+    const mult = this.paused ? 0 : SPEEDS[this.speedIdx];
+    const delta = realDelta * mult;
+    this.simNow += delta;
+    const time = this.simNow;
     const dt = delta / 1000;
+    void realTime;
     const cam = this.cameras.main;
     const sw = this.scale.width, sh = this.scale.height;
 
@@ -1598,6 +1686,12 @@ export class SandboxScene extends Phaser.Scene {
 
     const e = this.energy;
     this.poolText.setText(`POWER  FREE ${e.pool - e.wpn - e.eng - e.rep}/${e.pool}`);
+    this.pauseLabel.setText(this.paused ? 'PLAY' : 'PAUSE')
+      .setColor(this.paused ? '#ffb454' : '#9fd8ff');
+    this.speedLabel.setText(`${SPEEDS[this.speedIdx]}x`)
+      .setColor(this.speedIdx > 0 ? '#ffb454' : '#8593a6');
+    // The exit button asks before throwing the battle away.
+    this.quitText.setText(this.game.loop.time < this.quitArmed ? 'TAP AGAIN TO ABANDON' : '');
     this.fleets.A.forEach((ship, i) => {
       const pct = ship.active ? Math.max(0, Math.round((ship.hull / ship.spec.hull) * 100)) : 0;
       const r = this.tabRect(i, sw);

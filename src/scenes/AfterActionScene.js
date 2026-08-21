@@ -12,6 +12,9 @@ export class AfterActionScene extends Phaser.Scene {
   }
 
   create(report) {
+    // A new report means a new battle: the scene instance is reused, so the
+    // "already folded in" guard has to reset whenever a fresh report arrives.
+    if (report && report !== this.report) this.applied = false;
     this.report = report ?? this.report;
     const r = this.report;
     // A campaign mission folds its result back into the roster exactly once:
@@ -63,6 +66,13 @@ export class AfterActionScene extends Phaser.Scene {
     };
     section('YOUR FLEET', r.fleets.A, '#d8e2ee');
     section('OPPOSITION', r.fleets.B, '#e8b0a4');
+
+    if (r.missionId && !r.won) {
+      text(w / 2, Math.min(y, h - 116),
+        'OPERATION FAILED — THE TASK FORCE WITHDRAWS. NOTHING IS LOST; TRY AGAIN.',
+        10, '#8fb7d8', { ox: 0.5, align: 'center' });
+      y += 18;
+    }
 
     // Best showing of the battle — the seed of campaign veterancy.
     const best = [...r.fleets.A].sort((a, b) => b.dealt - a.dealt)[0];

@@ -21,7 +21,12 @@ There is no test suite or linter yet.
 - The player commands **capital ships** (FS2-inspired pacing): throttle-based helm,
   slow turns, auto-engaging turrets, bow-aligned main battery. Progression plan:
   small capitals → larger hulls → multi-ship fleets.
-- Scenes: `TitleScene` (menu over a live attract battle, preloads all assets) →
+- **Scene instances are reused across `scene.start()`** — every once-per-run
+  flag (`reportShown`, `applied`, `confirming`) and every engine time scale
+  must be reset in `create()`, or the second run inherits the first's state.
+  Three shipped bugs came from exactly this.
+- Scenes: `BootScene` (loads the manifest behind a progress bar; owns all asset
+  loading) → `TitleScene` (menu over a live attract battle) →
   `SelectScene` (fleet setup: up to 3 capitals per side, or a random faction
   battle) → `SandboxScene` (fleet battle) → `AfterActionScene` (battle report),
   plus `WikiScene` and `RefitScene` (wireframe hardpoint refitting; per-browser
@@ -32,6 +37,8 @@ There is no test suite or linter yet.
   (provenance and licensing). Entries measure their own text and size their
   card to fit; the scrolling container is masked so nothing runs under the
   tabs.
+- A failed campaign mission persists nothing — you retry from the state you
+  launched with. Only a won mission makes damage and losses permanent.
 - **Campaign**: `src/campaign.js` is the mission graph — the FS2 single-player
   campaign (28 main operations plus two optional SOC loops) rebuilt around the
   capital ships actually present in each retail mission. `CampaignScene` is the
@@ -64,7 +71,11 @@ There is no test suite or linter yet.
   renders on a second camera parked at `UIX` (far outside the world) so pinch
   zoom never scales it — UI objects live at `x = UIX + screenX` and are anchored
   via `uiPlace()`. Gestures: helm pad steers, one finger pans, two fingers pinch
-  (main camera zoom), FOCUS re-follows the player. Batteries fire automatically;
+  (main camera zoom), FOCUS re-follows the player, a minimap tap jumps the
+  camera, and leaving asks twice. The battle runs on its own clock (`simNow`,
+  advanced by `delta × speed`) so PAUSE and the 1x/2x/3x control scale the
+  whole simulation; `applySpeed()` also drives Phaser's clock, tween and
+  arcade-physics scales (arcade's is inverted). Batteries fire automatically;
   an Energy Transfer System (WPN/ENG/REP pips from a shared pool) sets weapon
   tempo, speed/turn, and hull repair for the player only.
 - `assets/derived/` holds faction recolors (gold-shift Vasudan, red-shift Shivan)

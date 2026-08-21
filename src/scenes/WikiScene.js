@@ -13,7 +13,8 @@ const TOP = 92; // first pixel of scrollable content
 // in the schematic's own 400×210 space and get scaled to the screen.
 const HUD_PARTS = [
   { n: 1, box: [4, 4, 26, 22], name: 'LEAVE', sample: 'X',
-    desc: 'Abandons the action and returns to the title screen.' },
+    desc: 'Abandons the action and returns to the title screen. Tap it twice — '
+      + 'the first tap only asks, so a stray thumb cannot throw a battle away.' },
   { n: 2, box: [36, 4, 150, 34], name: 'SHIP STATUS', fill: false,
     sample: 'VIGILANT · GTC FENRIS\nHULL 380/420  MOUNTS 8/9\nBATTERY 12.4s',
     desc: 'The ship you are conning: its name and class, hull, mounts still in '
@@ -26,7 +27,8 @@ const HUD_PARTS = [
       + 'clock, or keep an escorted ship alive.' },
   { n: 5, box: [292, 4, 104, 66], name: 'MINIMAP',
     desc: 'The whole battle area. Blue is yours, red is theirs, dots are strike '
-      + 'craft, and the box is the part you are looking at.' },
+      + 'craft, and the box is the part you are looking at. Tap anywhere on it '
+      + 'to jump the camera there.' },
   { n: 6, box: [284, 76, 112, 48], name: 'CONTACT',
     sample: 'SD RAVANA\nBELETH · DESTROYER\nHULL 62%  MNT 18/26\nRNG 840  GUNS 7/13',
     desc: 'The hostile you have designated: class, name, hull, mounts still '
@@ -55,6 +57,10 @@ const HUD_PARTS = [
       + 'and plus boxes to move power around.' },
   { n: 13, box: [380, 166, 10, 40], name: 'THROTTLE',
     desc: 'Current speed order, as set by the helm ring.' },
+  { n: 14, box: [24, 94, 94, 18], name: 'PAUSE · SPEED', sample: 'PAUSE  2x',
+    desc: 'Freeze the action, or run it at 1x, 2x or 3x. Capital combat is '
+      + 'deliberate by design — the fast-forward is there for long reloads and '
+      + 'hold-out missions, and it scales the whole battle, not just the view.' },
 ];
 
 const GESTURES = [
@@ -63,6 +69,7 @@ const GESTURES = [
   ['DRAG ONE FINGER', 'Pans the camera anywhere in the battle area.'],
   ['PINCH', 'Zooms the battle in and out. The interface never scales.'],
   ['DRAG THE HELM RING', 'Sets heading and throttle for the ship you are conning.'],
+  ['TAP THE MINIMAP', 'Jumps the camera to that part of the battle area.'],
 ];
 
 const ASSET_NOTES = [

@@ -84,6 +84,16 @@ export function hullPct(ship) {
 // Fold a battle report back into the campaign: damage sticks, losses are
 // permanent, a won mission advances the line and may add a hull to the force.
 export function applyResult(state, report) {
+  // A failed operation is a withdrawal, not a massacre: nothing carries over
+  // and you retry from the state you launched with. Only a won mission makes
+  // its damage and its losses permanent — otherwise one bad opening battle
+  // would wipe a single-ship task force and end the campaign outright.
+  if (!report.won) {
+    state.attempts = (state.attempts ?? 0) + 1;
+    return state;
+  }
+  state.attempts = 0;
+
   const byName = new Map(state.fleet.map((s) => [s.name, s]));
   for (const row of report.fleets.A) {
     const ship = byName.get(row.shipName);
@@ -100,8 +110,6 @@ export function applyResult(state, report) {
   const lost = state.fleet.filter((s) => s.lostAt);
   state.lost.push(...lost.map((s) => ({ key: s.key, name: s.name, at: s.lostAt })));
   state.fleet = state.fleet.filter((s) => !s.lostAt);
-
-  if (!report.won) return state;
 
   const mission = missionById(report.missionId);
   state.completed.push(report.missionId);

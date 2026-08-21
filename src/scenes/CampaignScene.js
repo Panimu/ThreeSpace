@@ -18,6 +18,8 @@ export class CampaignScene extends Phaser.Scene {
   }
 
   create() {
+    // Reused scene instance: never inherit a half-finished confirmation.
+    this.confirming = false;
     this.state = loadCampaign() ?? newCampaign();
     saveCampaign(this.state);
     this.sortie = new Set(
