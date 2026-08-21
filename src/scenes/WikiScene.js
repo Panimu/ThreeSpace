@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import {
-  SHIPS, STRIKECRAFT, WEAPONS, armamentSummary, complementSummary,
+  SHIPS, STRIKECRAFT, CIVILIANS, WEAPONS, armamentSummary, complementSummary,
 } from '../ships.js';
 import { ensureStarfield, TEXT_RES } from '../fx.js';
 
@@ -76,8 +76,9 @@ const ASSET_NOTES = [
   ['SHIP AND EFFECT ART',
     'Every hull, fighter and beam in the game is sliced from FS2-style sprite '
     + 'sheets supplied for this project. The capital plates gave 24 warships, '
-    + 'the strike-craft plate 42 fighters and bombers, and the ordnance plate '
-    + 'the beam bodies, bolt cores and flak bursts you see in combat. Slicing '
+    + 'the strike-craft plate 42 fighters and bombers, the support plate the '
+    + 'freighters, transports, gas miners and installations, and the ordnance '
+    + 'plate the beam bodies, bolt cores and flak bursts. Slicing '
     + 'was automatic — connected-component segmentation, then a cleanup pass '
     + 'that drops measurement lines and caption text.'],
   ['EVERYTHING ELSE IS PROCEDURAL',
@@ -93,8 +94,11 @@ const ASSET_NOTES = [
   ['CAMPAIGN STRUCTURE',
     'The campaign follows the retail single-player mission graph — its acts, '
     + 'locations, force compositions, objectives and optional SOC branches — '
-    + 'rebuilt around the warships present in each mission. All briefing text '
-    + 'is written for this project.'],
+    + 'rebuilt around the warships present in each mission. Which hulls appear '
+    + 'in an operation, and what they are called, comes from a distilled roster '
+    + 'checked into the repository; a script audits the campaign against it so '
+    + 'the war cannot quietly drift off the record. All briefing text is '
+    + 'written for this project.'],
   ['LICENSING',
     'Original FreeSpace 2 game data is proprietary to Interplay and THQ Nordic '
     + 'and is not distributed here. Nothing in this build is extracted from the '
@@ -360,6 +364,10 @@ export class WikiScene extends Phaser.Scene {
     for (const [key, ship] of Object.entries(SHIPS)) {
       y += this.shipEntry(key, ship, y, narrow);
     }
+    y = this.heading(y + 10, `SUPPORT AND INSTALLATIONS — ${Object.keys(CIVILIANS).length} HULLS`);
+    for (const [key, ship] of Object.entries(CIVILIANS)) {
+      y += this.shipEntry(key, ship, y, narrow);
+    }
     return y;
   }
 
@@ -384,7 +392,7 @@ export class WikiScene extends Phaser.Scene {
     const complement = complementSummary(ship);
     const stats = this.text(tx, ty,
       `${ship.length} m   HULL ${ship.hull}   SPEED ${ship.speed}   TURN ${ship.turn}°/s\n`
-      + `ARMAMENT ${armamentSummary(ship)}`
+      + `ARMAMENT ${armamentSummary(ship) || 'none — non-combatant'}`
       + (complement ? `\nAIR GROUP ${complement}` : ''),
       10, '#8593a6', { wrap });
     ty += stats.height + 6;
@@ -494,6 +502,7 @@ export class WikiScene extends Phaser.Scene {
     y = this.heading(y + 4, 'COUNTS');
     const counts = [
       `${Object.keys(SHIPS).length} capital ships`,
+      `${Object.keys(CIVILIANS).length} support hulls and installations`,
       `${Object.keys(STRIKECRAFT).length} fighters and bombers`,
       `${Object.keys(WEAPONS).length} weapon mounts`,
       `${Object.values(SHIPS).reduce((n, s) => n + s.hardpoints.length, 0)} modelled hardpoints`,

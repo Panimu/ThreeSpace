@@ -196,6 +196,26 @@ export const SHIPS = {
       { craft: 'hercules2', wings: 1 }, { craft: 'artemis', wings: 2 }, { craft: 'boanerges', wings: 2 }],
   },
 
+  // ---- Neo-Terran Front ----
+  // Bosch's flagship. Retail publishes no hull length for the Iceni and no
+  // separate hitpoint line, so it is statted as a heavy corvette: Deimos guns
+  // on a tougher hull, fast enough that the campaign's "you will not catch
+  // her" is true. Art is the red-trim NTF plate.
+  iceni: {
+    name: 'NTF Iceni', cls: 'Flagship corvette', faction: 'NTF', length: 720,
+    url: 'ships/ntf/iceni.png', flip: true,
+    hull: 1320, speed: 68, turn: 11, accel: 11,
+    hardpoints: [
+      hp('spinal', 'terslash', 0, 0.44),
+      ...spread('turret', 'terranHuge', 4, 0.15, 0.34, -0.3),
+      ...spread('turret', 'terranTurret', 6, 0.17, 0.28, -0.38),
+      ...spread('turret', 'standardFlak', 4, 0.2, 0.16, -0.24),
+      ...spread('turret', 'aaaf', 4, 0.18, 0.22, -0.26),
+    ],
+    desc: 'Admiral Bosch rides this one. Faster than anything that can hurt it and better armed than anything that can catch it — which is the whole story of the rebellion.',
+    hostile: true,
+  },
+
   // ---- Vasudan (allied) ----
   aten: {
     name: 'GVC Aten', cls: 'Cruiser', faction: 'Vasudan (allied)', length: 230,
@@ -462,6 +482,125 @@ export const STRIKECRAFT = {
     speed: 178, turn: 110, hull: 25, gun: { damage: 4, range: 360, delay: 1750, speed: 530, bolt: 'fx_bolt_shivanlight' },
     bomb: { damage: 120, range: 780, delay: 17000, speed: 255, bolt: 'fx_bolt_shivanheavy' } },
 };
+
+// Non-combatants: the freighters, transports, science ships, gas miners and
+// installations the FS2 campaign actually asks you to escort, defend or
+// destroy. Sliced from support-and-installations.png; lengths are the sheet's
+// printed figures. Most carry no weapons at all — `hardpoints: []` means every
+// existing combat, damage and report path treats them as ships that cannot
+// shoot back. Sentry guns are the exception: they are emplacements with one
+// mount and `station: true`, so they never manoeuvre.
+//
+// Hulls are soft on purpose. A freighter dies to a few turret bursts, which is
+// what makes a `protect` objective a real clock rather than a formality.
+export const CIVILIANS = {
+  // ---- Terran / GTVA ----
+  charybdis:   { name: 'GTVA Charybdis', cls: 'AWACS', faction: 'GTVA', length: 181,
+    url: 'ships/terran/charybdis.png', flip: true, hull: 220, speed: 26, turn: 14, accel: 10, hardpoints: [],
+    desc: 'Sees further than anything else in the fleet, which makes it the first thing worth killing.' },
+  faustus:     { name: 'GTSC Faustus', cls: 'Science vessel', faction: 'GTVA', length: 181,
+    url: 'ships/terran/faustus.png', flip: true, hull: 200, speed: 24, turn: 12, accel: 9, hardpoints: [],
+    desc: 'Survey and sensor research. Unarmed, and never where it is safe to be unarmed.' },
+  chronos:     { name: 'GTFr Chronos', cls: 'Heavy freighter', faction: 'GTVA', length: 164,
+    url: 'ships/terran/chronos.png', flip: true, hull: 180, speed: 20, turn: 10, accel: 7, hardpoints: [],
+    desc: 'Civilian bulk hauler. Most of the tonnage moving through GTVA space is one of these.' },
+  poseidon:    { name: 'GTFr Poseidon', cls: 'Freighter', faction: 'GTVA', length: 67,
+    url: 'ships/terran/poseidon.png', flip: true, hull: 120, speed: 22, turn: 14, accel: 9, hardpoints: [],
+    desc: 'Military freighter. Ammunition, spares and rations, moving at the speed of a target.' },
+  triton:      { name: 'GTT Triton', cls: 'Heavy transport', faction: 'GTVA', length: 313,
+    url: 'ships/terran/triton.png', flip: true, hull: 280, speed: 18, turn: 8, accel: 6, hardpoints: [],
+    desc: 'Heavy freight transport. Slow, enormous, and full of things that cannot be replaced quickly.' },
+  argo:        { name: 'GTT Argo', cls: 'Transport', faction: 'GTVA', length: 171,
+    url: 'ships/terran/argo.png', flip: true, hull: 160, speed: 24, turn: 12, accel: 9, hardpoints: [],
+    desc: 'Military transport — troops one way, wounded the other.' },
+  elysium:     { name: 'GTT Elysium', cls: 'Personnel transport', faction: 'GTVA', length: 32,
+    url: 'ships/terran/elysium.png', flip: true, hull: 70, speed: 34, turn: 22, accel: 16, hardpoints: [],
+    desc: 'The evacuation shuttle. Every one you lose is counted in hundreds.' },
+  zephyrus:    { name: 'GTG Zephyrus', cls: 'Gas miner', faction: 'GTVA', length: 251,
+    url: 'ships/terran/zephyrus.png', flip: true, hull: 340, speed: 10, turn: 6, accel: 4, hardpoints: [],
+    desc: 'Scoops fuel out of gas giants. Cannot run, cannot fight, cannot be replaced this decade.' },
+  hippocrates: { name: 'GTM Hippocrates', cls: 'Hospital ship', faction: 'GTVA', length: 546,
+    url: 'ships/terran/hippocrates.png', flip: true, hull: 420, speed: 16, turn: 7, accel: 5, hardpoints: [],
+    desc: 'A hospital with engines. The red cross is not a targeting aid, whatever the Shivans think.' },
+  hygeia:      { name: 'GTS Hygeia', cls: 'Support ship', faction: 'GTVA', length: 32,
+    url: 'ships/terran/hygeia.png', flip: true, hull: 70, speed: 30, turn: 20, accel: 15, hardpoints: [],
+    desc: 'Rearm and repair tender. Turns up when you are out of everything.' },
+  ganymede:    { name: 'GTI Ganymede', cls: 'Drydock installation', faction: 'GTVA', length: 1348,
+    url: 'ships/terran/ganymede.png', flip: true, hull: 1400, speed: 0, turn: 0, accel: 0,
+    station: true, hardpoints: [],
+    desc: 'Repair and resupply ring. Capitals go in wrecked and come out fighting — if it survives.' },
+  arcadia:     { name: 'GTI Arcadia', cls: 'Installation', faction: 'GTVA', length: 3792,
+    url: 'ships/terran/arcadia.png', flip: true, hull: 2600, speed: 0, turn: 0, accel: 0,
+    station: true, hardpoints: [],
+    desc: 'Four kilometres of station. Home to tens of thousands of people who cannot leave quickly.' },
+  mjolnir:     { name: 'GTSG Mjolnir', cls: 'Sentry gun', faction: 'GTVA', length: 108,
+    url: 'ships/terran/mjolnir.png', flip: true, hull: 260, speed: 0, turn: 0, accel: 0, station: true,
+    hardpoints: [hp('turret', 'terranHuge', 0, 0)],
+    desc: 'A beam emplacement bolted to nothing. Node defence on a budget.' },
+
+  // ---- Vasudan ----
+  setekh:      { name: 'GVA Setekh', cls: 'AWACS', faction: 'Vasudan (allied)', length: 190,
+    url: 'ships/vasudan/setekh.png', flip: false, hull: 220, speed: 26, turn: 14, accel: 10, hardpoints: [],
+    desc: 'The Vasudan answer to the Charybdis, and just as fragile.' },
+  anuket:      { name: 'GVG Anuket', cls: 'Gas miner', faction: 'Vasudan (allied)', length: 347,
+    url: 'ships/vasudan/anuket.png', flip: false, hull: 380, speed: 10, turn: 6, accel: 4, hardpoints: [],
+    desc: 'A string of collection spheres on a spine. Vasudan fuel production, in one hull.' },
+  bes:         { name: 'GVFr Bes', cls: 'Freighter', faction: 'Vasudan (allied)', length: 56,
+    url: 'ships/vasudan/bes.png', flip: false, hull: 110, speed: 22, turn: 14, accel: 9, hardpoints: [],
+    desc: 'Vasudan light freighter. Ubiquitous and unremarkable until one is yours to protect.' },
+  nephthys:    { name: 'GVS Nephthys', cls: 'Support ship', faction: 'Vasudan (allied)', length: 34,
+    url: 'ships/vasudan/nephthys.png', flip: false, hull: 70, speed: 30, turn: 20, accel: 15, hardpoints: [],
+    desc: 'Rearm and repair tender, Vasudan pattern.' },
+  ankh:        { name: 'GVSG Ankh', cls: 'Sentry gun', faction: 'Vasudan (allied)', length: 100,
+    url: 'ships/vasudan/ankh.png', flip: false, hull: 240, speed: 0, turn: 0, accel: 0, station: true,
+    hardpoints: [hp('turret', 'vasudanTurret', 0, 0)],
+    desc: 'Vasudan emplacement gun. Cheap, patient, and sited where you will not see it first.' },
+
+  // ---- Shivan ----
+  azraeltr:    { name: 'ST Azrael', cls: 'Transport', faction: 'Shivan', length: 46,
+    url: 'ships/shivan/azrael.png', flip: true, hull: 90, speed: 26, turn: 18, accel: 12, hardpoints: [],
+    desc: 'Shivan transport. Whatever it is carrying, we have never recovered one intact.' },
+  dis:         { name: 'SFr Dis', cls: 'Freighter', faction: 'Shivan', length: 90,
+    url: 'ships/shivan/dis.png', flip: true, hull: 150, speed: 22, turn: 12, accel: 8, hardpoints: [],
+    desc: 'Shivan logistics. Proof that even they have a supply chain.' },
+  mephisto:    { name: 'SFr Mephisto', cls: 'Freighter', faction: 'Shivan', length: 54,
+    url: 'ships/shivan/mephisto.png', flip: true, hull: 120, speed: 24, turn: 14, accel: 9, hardpoints: [],
+    desc: 'Light Shivan freighter, usually escorted far more heavily than its cargo can justify.' },
+  asmodeus:    { name: 'SFr Asmodeus', cls: 'Heavy freighter', faction: 'Shivan', length: 123,
+    url: 'ships/shivan/asmodeus.png', flip: true, hull: 200, speed: 18, turn: 10, accel: 7, hardpoints: [],
+    desc: 'Heavy Shivan hauler. Where one goes, a cruiser is not far behind.' },
+  rahu:        { name: 'SSG Rahu', cls: 'Gas miner', faction: 'Shivan', length: 211,
+    url: 'ships/shivan/rahu.png', flip: true, hull: 320, speed: 10, turn: 6, accel: 4, hardpoints: [],
+    desc: 'Shivan gas mining rig. They need fuel too — which is the only useful thing we know about them.' },
+  belial:      { name: 'SSG Belial', cls: 'Sentry gun', faction: 'Shivan', length: 22,
+    url: 'ships/shivan/belial.png', flip: true, hull: 220, speed: 0, turn: 0, accel: 0, station: true,
+    hardpoints: [hp('turret', 'shivanHeavy', 0, 0)],
+    desc: 'Shivan emplacement. Small, hot, and sited in threes.' },
+  trident:     { name: 'SSG Trident', cls: 'Sentry gun', faction: 'Shivan', length: 11,
+    url: 'ships/shivan/trident.png', flip: true, hull: 180, speed: 0, turn: 0, accel: 0, station: true,
+    hardpoints: [hp('turret', 'shivanTurret', 0, 0)],
+    desc: 'The smaller Shivan sentry. You will find them by being shot by them.' },
+  sac3:        { name: 'SAC 3', cls: 'Cargo container', faction: 'Shivan', length: 243,
+    url: 'ships/shivan/sac3.png', flip: true, hull: 90, speed: 0, turn: 0, accel: 0,
+    station: true, hardpoints: [],
+    desc: 'Shivan cargo container. Scanning one is worth more than destroying ten.' },
+  commnode:    { name: 'Shivan Comm Node', cls: 'Relay', faction: 'Shivan', length: 748,
+    url: 'ships/shivan/commnode.png', flip: true, hull: 700, speed: 0, turn: 0, accel: 0,
+    station: true, hardpoints: [],
+    desc: 'How they talk to each other. Killing one blinds a fleet for as long as it takes them to rebuild it.' },
+
+  // ---- Other ----
+  knossos:     { name: 'Knossos Portal', cls: 'Ancient structure', faction: 'Unknown', length: 1500,
+    url: 'ships/other/knossos.png', flip: true, hull: 3000, speed: 0, turn: 0, accel: 0,
+    station: true, hardpoints: [],
+    desc: 'Older than the Shivans, older than us. It opens a door in space, and it does not explain itself.' },
+};
+
+// Specs come from two tables now — combat hulls and non-combatants — but every
+// consumer wants one lookup.
+export function shipSpec(key) {
+  return SHIPS[key] ?? CIVILIANS[key] ?? null;
+}
 
 // Fighters get a readability floor: canon-proportional above ~16 px.
 export function strikeDisplayLength(metres) {

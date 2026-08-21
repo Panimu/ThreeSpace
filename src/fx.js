@@ -155,6 +155,8 @@ export function ensureBeamTextures(scene) {
 export function factionColor(spec) {
   if (spec.faction === 'Shivan') return 0xff5040;
   if (spec.faction.startsWith('Vasudan')) return 0xffd070;
+  if (spec.faction === 'NTF') return 0xff9a5e;
+  if (spec.faction === 'Unknown') return 0xb094ff;
   return 0x66b7ff;
 }
 

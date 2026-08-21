@@ -5,7 +5,7 @@
 // To use your own art, drop files into assets/local/ (gitignored) and point an
 // entry's url at 'local/whatever.png'.
 
-import { SHIPS, STRIKECRAFT, displayLength, strikeDisplayLength } from './ships.js';
+import { SHIPS, STRIKECRAFT, CIVILIANS, displayLength, strikeDisplayLength } from './ships.js';
 
 // In single-file builds, assets are embedded on window.__ASSETS__ by path.
 export function resolveUrl(path) {
@@ -17,6 +17,14 @@ export function resolveUrl(path) {
 // length; SandboxScene fills in the real scale once the texture is loaded.
 export const IMAGES = {};
 for (const [key, ship] of Object.entries(SHIPS)) {
+  IMAGES[`ship_${key}`] = {
+    url: ship.url,
+    angleOffset: ship.flip ? 180 : 0,
+    targetLength: displayLength(ship.length),
+  };
+}
+// Non-combatants share the capitals' art convention and scale curve.
+for (const [key, ship] of Object.entries(CIVILIANS)) {
   IMAGES[`ship_${key}`] = {
     url: ship.url,
     angleOffset: ship.flip ? 180 : 0,

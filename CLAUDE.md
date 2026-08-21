@@ -40,8 +40,15 @@ There is no test suite or linter yet.
 - A failed campaign mission persists nothing — you retry from the state you
   launched with. Only a won mission makes damage and losses permanent.
 - **Campaign**: `src/campaign.js` is the mission graph — the FS2 single-player
-  campaign (28 main operations plus two optional SOC loops) rebuilt around the
-  capital ships actually present in each retail mission. `CampaignScene` is the
+  campaign (30 main operations plus two optional SOC loops) rebuilt around the
+  capital ships actually present in each retail mission. Force composition is
+  **not** hand-invented: `scripts/fs2-campaign-source.json` holds the distilled
+  canon roster (hulls, names, IFF, goals per mission) and
+  `scripts/check-campaign.mjs` audits `campaign.js` against it — run it after
+  touching either. A mission that deliberately departs from canon carries a
+  `canonNote` string, which is what stops the checker erroring. This guard
+  exists because the campaign was once written from a summary instead of the
+  roster and twenty missions silently lost the ally that fought in them. `CampaignScene` is the
   bridge: orders, opposition, and which damaged hulls you sortie (max 3).
   `src/campaignState.js` owns the save (`threespace-campaign-v1`): hull damage
   and shot-off mounts persist between missions, losses are permanent, a
@@ -78,11 +85,17 @@ There is no test suite or linter yet.
   arcade-physics scales (arcade's is inverted). Batteries fire automatically;
   an Energy Transfer System (WPN/ENG/REP pips from a shared pool) sets weapon
   tempo, speed/turn, and hull repair for the player only.
-- `assets/derived/` holds faction recolors (gold-shift Vasudan, red-shift Shivan)
-  baked by `scripts/recolor-factions.mjs` — re-run it after changing ship casts.
+- `scripts/recolor-factions.mjs` (gold-shift Vasudan, red-shift Shivan into
+  `assets/derived/`) is left over from the Endless Sky cast and is **not in
+  use**: every sprite is now sliced from a faction-native sheet, so no ship url
+  points at `derived/` and the directory does not exist.
 - `src/ships.js` is the ship catalog: stats, wiki copy, sprite reference, and
-  **hardpoints** per hull, plus the `STRIKECRAFT` table (fighters/bombers) and
-  per-carrier `hangar` complements (FS2-flavored). Add ships here, not in scenes. Hardpoints are mounts
+  **hardpoints** per hull, plus the `STRIKECRAFT` table (fighters/bombers),
+  per-carrier `hangar` complements (FS2-flavored), and `CIVILIANS` — the
+  non-combatants (freighters, transports, AWACS, gas miners, hospital ships,
+  sentry guns, installations, the Knossos portal). Look a spec up with
+  `shipSpec(key)`, which covers both tables; `SHIPS` alone is what the fleet
+  picker, refit bay and random pools iterate, so civilians stay out of them. Add ships here, not in scenes. Hardpoints are mounts
   ({type, fitted, x, y} — hull-fraction coords, +y toward bow) with a fitted
   weapon from the `WEAPONS` table; combat fires from these positions and the
   wiki draws them as markers. Planned direction: a wireframe refit screen where
@@ -92,6 +105,12 @@ There is no test suite or linter yet.
   hull keys *or* records (`{key, name, hull, deadMounts}`) so campaign damage
   spawns in, and `data.mission` switches on objectives and named opposition.
   Never mutate the passed mission — it is the shared `MISSIONS` record.
+  `mission.civilians` puts non-combatants on either side. They ride in
+  `fleets.A/B` (so targeting, damage and the report reach them) but are
+  **appended after the warships**, because fleet-tab indices are warship
+  indices — `this.conCount` is the boundary. They never take the con, they
+  never fire unless they are a sentry gun, and a side is only beaten when its
+  *warships* are gone.
 - `src/manifest.js` is the asset manifest: **all** art/sound is resolved through it.
   Each image entry carries `angleOffset` (degrees to align the art with facing 0 = east)
   and `scale`. Never hardcode asset paths in scenes — add manifest entries.

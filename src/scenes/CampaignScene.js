@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { SHIPS } from '../ships.js';
+import { SHIPS, shipSpec } from '../ships.js';
 import { ensureStarfield, TEXT_RES } from '../fx.js';
 import { missionById } from '../campaign.js';
 import {
@@ -60,16 +60,21 @@ export class CampaignScene extends Phaser.Scene {
     y += brief.height + 12;
 
     // Who is out there, named.
-    const foes = mission.enemy.map((key, i) => {
-      const nm = mission.names?.B?.[i];
-      return `${SHIPS[key].name}${nm ? ` ${nm}` : ''}`;
-    });
-    this.text(w / 2, y, `OPPOSITION   ${foes.join('  ·  ')}`, 10, '#e8a49a',
+    const listing = (ships) => ships
+      .map((e) => `${shipSpec(e.key).name}${e.name ? ` ${e.name}` : ''}`).join('  ·  ');
+    const foes = [...mission.enemy, ...(mission.civilians?.B ?? [])];
+    this.text(w / 2, y, `OPPOSITION   ${listing(foes)}`, 10, '#e8a49a',
       { ox: 0.5, wrap: w - 40, align: 'center' });
     y += 20;
     if (mission.attach?.length) {
-      this.text(w / 2, y, `ATTACHED   ${mission.attach.map((a) => `${SHIPS[a.key].name} ${a.name}`).join('  ·  ')}`,
+      this.text(w / 2, y, `ATTACHED   ${listing(mission.attach)}`,
         10, '#8fd8a4', { ox: 0.5, wrap: w - 40, align: 'center' });
+      y += 20;
+    }
+    // Whatever is out there that cannot defend itself.
+    if (mission.civilians?.A?.length) {
+      this.text(w / 2, y, `IN COMPANY   ${listing(mission.civilians.A)}`,
+        10, '#8593a6', { ox: 0.5, wrap: w - 40, align: 'center' });
       y += 20;
     }
     const objLine = mission.objective.kind === 'survive'

@@ -1,0 +1,2455 @@
+{
+ "note": "Canonical force composition for the FreeSpace 2 single-player campaign, distilled to the hulls ThreeSpace models. Derived from a clean-room campaign reconstruction: per mission it records which capital ships and non-combatants were present, their canon names, their IFF, and the mission goal list. src/campaign.js is generated against this file \u2014 edit this first, not the generated rosters, or the campaign drifts off canon again. Ship classes with no ThreeSpace hull (cargo containers, escape pods, nav buoys, training drones) are omitted; a few Vasudan freighter classes share the GVFr Bes hull. Briefing prose is ours and lives in src/campaign.js.",
+ "missions": [
+  {
+   "file": "SM1-01.fs2",
+   "num": 4,
+   "title": "Surrender, Belisarius!",
+   "act": "Act I",
+   "route": "Main",
+   "where": "Deneb \u2014 Cygnus Prime",
+   "caps": {
+    "friendly": [
+     {
+      "key": "hatshepsut",
+      "name": "Psamtik"
+     }
+    ],
+    "hostile": [],
+    "neutral": [
+     {
+      "key": "deimos",
+      "name": "Belisarius"
+     }
+    ]
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "bes",
+      "name": "Iota"
+     },
+     {
+      "key": "bes",
+      "name": "Iota"
+     }
+    ],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Protect Iota"
+    }
+   ]
+  },
+  {
+   "file": "SM1-02.fs2",
+   "num": 5,
+   "title": "The Place of Chariots",
+   "act": "Act I",
+   "route": "Main",
+   "where": "Deneb asteroid belt",
+   "caps": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": [
+     {
+      "key": "deimos",
+      "name": "Unknown NTF"
+     }
+    ]
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": [
+     {
+      "key": "mjolnir",
+      "name": "Sentry"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Sentry"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Sentry"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Sentry"
+     },
+     {
+      "key": "triton",
+      "name": "Capricorn"
+     },
+     {
+      "key": "poseidon",
+      "name": "Capricorn"
+     },
+     {
+      "key": "poseidon",
+      "name": "Capricorn"
+     }
+    ]
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Secure Depot"
+    },
+    {
+     "type": "Primary",
+     "name": "Destroy Installation"
+    },
+    {
+     "type": "Bonus",
+     "name": "Destroy All Cargo"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy Sentries and Freighters"
+    },
+    {
+     "type": "Primary",
+     "name": "Secure Area"
+    }
+   ]
+  },
+  {
+   "file": "SM1-03.fs2",
+   "num": 6,
+   "title": "The Romans Blunder",
+   "act": "Act I",
+   "route": "Main",
+   "where": "Deneb\u2013Sirius jump route",
+   "caps": {
+    "friendly": [
+     {
+      "key": "hatshepsut",
+      "name": "Psamtik"
+     }
+    ],
+    "hostile": [],
+    "neutral": [
+     {
+      "key": "iceni",
+      "name": "Iceni"
+     },
+     {
+      "key": "fenris",
+      "name": "Glorious"
+     },
+     {
+      "key": "leviathan",
+      "name": "Impervious"
+     }
+    ]
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": [
+     {
+      "key": "triton",
+      "name": "Capricorn"
+     },
+     {
+      "key": "poseidon",
+      "name": "Capricorn"
+     }
+    ]
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Stop the NTF Iceni"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy the Glorious"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy the Impervious"
+    },
+    {
+     "type": "Primary",
+     "name": "Destroy Capricorns"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy Fighters"
+    }
+   ]
+  },
+  {
+   "file": "SM1-04.fs2",
+   "num": 9,
+   "title": "A Lion at the Door",
+   "act": "Act I",
+   "route": "Main",
+   "where": "Gamma Draconis node",
+   "caps": {
+    "friendly": [
+     {
+      "key": "orion",
+      "name": "Carthage"
+     },
+     {
+      "key": "sobek",
+      "name": "Dahshor"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "rakshasa",
+      "name": "Behemoth"
+     },
+     {
+      "key": "cain",
+      "name": "Goliath"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "knossos",
+      "name": "Subspace Portal"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "sac3",
+      "name": "SC 5"
+     },
+     {
+      "key": "sac3",
+      "name": "SC 5"
+     },
+     {
+      "key": "sac3",
+      "name": "SC 5"
+     },
+     {
+      "key": "sac3",
+      "name": "SAC 2"
+     },
+     {
+      "key": "sac3",
+      "name": "SAC 2"
+     },
+     {
+      "key": "azraeltr",
+      "name": "Semyaza"
+     },
+     {
+      "key": "mephisto",
+      "name": "Maul"
+     },
+     {
+      "key": "sac3",
+      "name": "SC 5"
+     },
+     {
+      "key": "asmodeus",
+      "name": "Neqael"
+     },
+     {
+      "key": "sac3",
+      "name": "SAC 2"
+     },
+     {
+      "key": "dis",
+      "name": "Baraqel"
+     },
+     {
+      "key": "sac3",
+      "name": "SC 5"
+     }
+    ],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Secure Area"
+    },
+    {
+     "type": "Primary",
+     "name": "Protect Orion"
+    },
+    {
+     "type": "Secondary",
+     "name": "Protect Corvette"
+    }
+   ]
+  },
+  {
+   "file": "SM1-05.fs2",
+   "num": 10,
+   "title": "Mystery of the Trinity",
+   "act": "Act I",
+   "route": "Main",
+   "where": "Nebula beyond Gamma Draconis",
+   "caps": {
+    "friendly": [
+     {
+      "key": "hecate",
+      "name": "Aquitaine"
+     }
+    ],
+    "hostile": [],
+    "neutral": [
+     {
+      "key": "fenris",
+      "name": "Trinity"
+     }
+    ]
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "elysium",
+      "name": "Discovery"
+     }
+    ],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Patrol Nebula"
+    },
+    {
+     "type": "Primary",
+     "name": "Trinity"
+    },
+    {
+     "type": "Primary",
+     "name": "Discovery"
+    }
+   ]
+  },
+  {
+   "file": "SM1-06.fs2",
+   "num": 11,
+   "title": "The Great Hunt",
+   "act": "Act I",
+   "route": "Main",
+   "where": "Nebula beyond Gamma Draconis",
+   "caps": {
+    "friendly": [
+     {
+      "key": "deimos",
+      "name": "Actium"
+     },
+     {
+      "key": "deimos",
+      "name": "Lysander"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "cain",
+      "name": "Asuras"
+     },
+     {
+      "key": "rakshasa",
+      "name": "Iblis"
+     },
+     {
+      "key": "ravana",
+      "name": "Unknown"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Protect Corvettes"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy Lilith"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy Iblis"
+    }
+   ]
+  },
+  {
+   "file": "SM1-07.fs2",
+   "num": 12,
+   "title": "Slaying Ravana",
+   "act": "Act I",
+   "route": "Main",
+   "where": "Nebula beyond Gamma Draconis",
+   "caps": {
+    "friendly": [
+     {
+      "key": "leviathan",
+      "name": "Heisenberg"
+     },
+     {
+      "key": "sobek",
+      "name": "Khenmu"
+     },
+     {
+      "key": "mentu",
+      "name": "Somtus"
+     },
+     {
+      "key": "deimos",
+      "name": "Yakiba"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "ravana",
+      "name": "Ravana"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Destroy Ravana"
+    }
+   ]
+  },
+  {
+   "file": "SM1-08.fs2",
+   "num": 14,
+   "title": "The Sixth Wonder",
+   "act": "Act I",
+   "route": "Main",
+   "where": "Epsilon Pegasi \u2014 Enif Station",
+   "caps": {
+    "friendly": [
+     {
+      "key": "colossus",
+      "name": "Colossus"
+     }
+    ],
+    "hostile": [],
+    "neutral": [
+     {
+      "key": "leviathan",
+      "name": "Cato"
+     },
+     {
+      "key": "deimos",
+      "name": "Hawkwood"
+     },
+     {
+      "key": "leviathan",
+      "name": "Conquest"
+     }
+    ]
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "triton",
+      "name": "Calypso"
+     },
+     {
+      "key": "arcadia",
+      "name": "Enif Station"
+     },
+     {
+      "key": "elysium",
+      "name": "Mannheim"
+     }
+    ],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Protect Installation"
+    },
+    {
+     "type": "Secondary",
+     "name": "Protect Transports"
+    }
+   ]
+  },
+  {
+   "file": "SM1-09.fs2",
+   "num": 15,
+   "title": "Into the Maelstrom",
+   "act": "Act I",
+   "route": "Main",
+   "where": "Epsilon Pegasi asteroid field",
+   "caps": {
+    "friendly": [
+     {
+      "key": "colossus",
+      "name": "Colossus"
+     },
+     {
+      "key": "deimos",
+      "name": "Parapet"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "fenris",
+      "name": "Maelstrom"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "anuket",
+      "name": "Jooyun"
+     },
+     {
+      "key": "zephyrus",
+      "name": "Avila"
+     },
+     {
+      "key": "triton",
+      "name": "Parracombe"
+     },
+     {
+      "key": "elysium",
+      "name": "Hauler"
+     },
+     {
+      "key": "elysium",
+      "name": "Hauler"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "mjolnir",
+      "name": "Gun1"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Gun2"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Gun3"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Gun4"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Gun5"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Gun6"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Gun7"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Gun8"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Gun9"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Gun10"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Gun11"
+     }
+    ],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Convoy"
+    },
+    {
+     "type": "Bonus",
+     "name": "Guns"
+    },
+    {
+     "type": "Secondary",
+     "name": "fighters"
+    },
+    {
+     "type": "Secondary",
+     "name": "Bombers"
+    }
+   ]
+  },
+  {
+   "file": "SM1-10.fs2",
+   "num": 16,
+   "title": "Feint! Parry! Riposte!",
+   "act": "Act I",
+   "route": "Main",
+   "where": "Epsilon Pegasi",
+   "caps": {
+    "friendly": [
+     {
+      "key": "colossus",
+      "name": "Colossus"
+     },
+     {
+      "key": "leviathan",
+      "name": "Rampart"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "orion",
+      "name": "Repulse"
+     },
+     {
+      "key": "fenris",
+      "name": "Majestic"
+     },
+     {
+      "key": "fenris",
+      "name": "Refute"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Destroy Fighter Escort"
+    },
+    {
+     "type": "Secondary",
+     "name": "Defend The Rampart"
+    },
+    {
+     "type": "Primary",
+     "name": "Destroy Rebels"
+    }
+   ]
+  },
+  {
+   "file": "Loop1-1.fs2",
+   "num": 17,
+   "title": "Rebels & Renegades",
+   "act": "SOC Loop I",
+   "route": "Optional",
+   "where": "NTF-controlled space",
+   "caps": {
+    "friendly": [
+     {
+      "key": "iceni",
+      "name": "Iceni"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "mentu",
+      "name": "Yaaru"
+     },
+     {
+      "key": "sobek",
+      "name": "Asar"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "faustus",
+      "name": "Hinton"
+     }
+    ],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Escape"
+    },
+    {
+     "type": "Secondary",
+     "name": "Scan Iceni"
+    },
+    {
+     "type": "Bonus",
+     "name": "Scan Hinton"
+    },
+    {
+     "type": "Secondary",
+     "name": "Protect Hinton"
+    }
+   ]
+  },
+  {
+   "file": "Loop1-2.fs2",
+   "num": 18,
+   "title": "Love the Treason...",
+   "act": "SOC Loop I",
+   "route": "Optional",
+   "where": "NTF-controlled space",
+   "caps": {
+    "friendly": [
+     {
+      "key": "deimos",
+      "name": "Naxos"
+     },
+     {
+      "key": "deimos",
+      "name": "Sevrin"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "aeolus",
+      "name": "Mylae"
+     },
+     {
+      "key": "aeolus",
+      "name": "Hellespont"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "argo",
+      "name": "Sunder"
+     },
+     {
+      "key": "hygeia",
+      "name": "Centaur"
+     },
+     {
+      "key": "charybdis",
+      "name": "Hamako"
+     },
+     {
+      "key": "argo",
+      "name": "Sunder Decoy"
+     }
+    ],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Guard Sunder"
+    },
+    {
+     "type": "Primary",
+     "name": "Guard Hamako"
+    }
+   ]
+  },
+  {
+   "file": "Loop1-3.fs2",
+   "num": 19,
+   "title": "...But Hate the Traitor",
+   "act": "SOC Loop I",
+   "route": "Optional",
+   "where": "GTVA cargo depot",
+   "caps": {
+    "friendly": [],
+    "hostile": [
+     {
+      "key": "aeolus",
+      "name": "Saharan"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     }
+    ],
+    "neutral": [
+     {
+      "key": "elysium",
+      "name": "Omega"
+     }
+    ]
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Goal name"
+    }
+   ]
+  },
+  {
+   "file": "SM2-01.fs2",
+   "num": 20,
+   "title": "Battle of the Wilderness",
+   "act": "Act II",
+   "route": "Main",
+   "where": "Nebula beyond Gamma Draconis",
+   "caps": {
+    "friendly": [
+     {
+      "key": "deimos",
+      "name": "Warspite"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "cain",
+      "name": "Malor"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "charybdis",
+      "name": "Lucidity"
+     },
+     {
+      "key": "triton",
+      "name": "Erinpura"
+     },
+     {
+      "key": "triton",
+      "name": "Vauban"
+     }
+    ],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Secondary",
+     "name": "Protect Lucidity"
+    },
+    {
+     "type": "Primary",
+     "name": "Protect Vauban"
+    },
+    {
+     "type": "Primary",
+     "name": "Protect Erinpura"
+    }
+   ]
+  },
+  {
+   "file": "SM2-02.fs2",
+   "num": 21,
+   "title": "A Game of TAG",
+   "act": "Act II",
+   "route": "Main",
+   "where": "Nebula beyond Gamma Draconis",
+   "caps": {
+    "friendly": [
+     {
+      "key": "deimos",
+      "name": "Warspite"
+     }
+    ],
+    "hostile": [],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "charybdis",
+      "name": "Lucidity"
+     }
+    ],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Test TAG Missiles"
+    },
+    {
+     "type": "Primary",
+     "name": "Destroy all enemy fighters"
+    },
+    {
+     "type": "Primary",
+     "name": "Defend Warspite"
+    },
+    {
+     "type": "Primary",
+     "name": "Defend Lucidity"
+    }
+   ]
+  },
+  {
+   "file": "SM2-03.fs2",
+   "num": 22,
+   "title": "Proving Grounds",
+   "act": "Act II",
+   "route": "Main",
+   "where": "Nebula proving ground",
+   "caps": {
+    "friendly": [
+     {
+      "key": "hecate",
+      "name": "Aquitaine"
+     },
+     {
+      "key": "fenris",
+      "name": "Oberon"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "moloch",
+      "name": "Tiamat"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Escort Aquitaine"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy Tiamat"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy Fighters"
+    },
+    {
+     "type": "Secondary",
+     "name": "Protect Oberon"
+    },
+    {
+     "type": "Primary",
+     "name": "Test Stealth"
+    }
+   ]
+  },
+  {
+   "file": "SM2-04.fs2",
+   "num": 23,
+   "title": "The King's Gambit",
+   "act": "Act II",
+   "route": "Main",
+   "where": "Capella blockade route",
+   "caps": {
+    "friendly": [
+     {
+      "key": "typhon",
+      "name": "Hedetet"
+     },
+     {
+      "key": "mentu",
+      "name": "Unut"
+     },
+     {
+      "key": "deimos",
+      "name": "York"
+     },
+     {
+      "key": "aeolus",
+      "name": "Warwick"
+     }
+    ],
+    "hostile": [],
+    "neutral": [
+     {
+      "key": "orion",
+      "name": "Uhuru"
+     },
+     {
+      "key": "deimos",
+      "name": "Pax"
+     },
+     {
+      "key": "aeolus",
+      "name": "Liberty"
+     },
+     {
+      "key": "leviathan",
+      "name": "Undaunted"
+     },
+     {
+      "key": "deimos",
+      "name": "Perseverance"
+     }
+    ]
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "mjolnir",
+      "name": "Mjolnir"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Mjolnir"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Mjolnir"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Mjolnir"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Alastor"
+     },
+     {
+      "key": "mjolnir",
+      "name": "Mjolnir"
+     }
+    ],
+    "hostile": [],
+    "neutral": [
+     {
+      "key": "argo",
+      "name": "Inspiration"
+     }
+    ]
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Destroy Rebels"
+    }
+   ]
+  },
+  {
+   "file": "SM2-05.fs2",
+   "num": 24,
+   "title": "The Sicilian Defense",
+   "act": "Act II",
+   "route": "Main",
+   "where": "Gamma Draconis",
+   "caps": {
+    "friendly": [
+     {
+      "key": "sobek",
+      "name": "Hyksos"
+     },
+     {
+      "key": "deimos",
+      "name": "Diomedes"
+     }
+    ],
+    "hostile": [],
+    "neutral": [
+     {
+      "key": "orion",
+      "name": "Vindicator"
+     },
+     {
+      "key": "deimos",
+      "name": "Yoshitomo"
+     },
+     {
+      "key": "leviathan",
+      "name": "Alba"
+     },
+     {
+      "key": "aeolus",
+      "name": "Epigoni"
+     }
+    ]
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": [
+     {
+      "key": "argo",
+      "name": "Venture"
+     }
+    ]
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Destroy Rebel Fleet"
+    },
+    {
+     "type": "Primary",
+     "name": "Destroy the Iceni"
+    }
+   ]
+  },
+  {
+   "file": "SM2-06.fs2",
+   "num": 25,
+   "title": "Endgame",
+   "act": "Act II",
+   "route": "Main",
+   "where": "Gamma Draconis \u2014 Knossos",
+   "caps": {
+    "friendly": [
+     {
+      "key": "colossus",
+      "name": "Colossus"
+     },
+     {
+      "key": "deimos",
+      "name": "Monitor"
+     },
+     {
+      "key": "fenris",
+      "name": "Fortune"
+     }
+    ],
+    "hostile": [],
+    "neutral": [
+     {
+      "key": "iceni",
+      "name": "Iceni"
+     },
+     {
+      "key": "aeolus",
+      "name": "Loyola"
+     },
+     {
+      "key": "deimos",
+      "name": "Danton"
+     }
+    ]
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "knossos",
+      "name": "Knossos"
+     }
+    ],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Protect The Portal"
+    },
+    {
+     "type": "Secondary",
+     "name": "Stop The Iceni"
+    }
+   ]
+  },
+  {
+   "file": "SM2-07.fs2",
+   "num": 26,
+   "title": "The Fog of War",
+   "act": "Act II",
+   "route": "Main",
+   "where": "Nebula resource field",
+   "caps": {
+    "friendly": [
+     {
+      "key": "sobek",
+      "name": "Tatenen"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "sathanas",
+      "name": "Unknown"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "setekh",
+      "name": "Junit"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "rahu",
+      "name": "Rahu"
+     },
+     {
+      "key": "rahu",
+      "name": "Rahu"
+     },
+     {
+      "key": "rahu",
+      "name": "Rahu"
+     },
+     {
+      "key": "rahu",
+      "name": "Rahu"
+     },
+     {
+      "key": "rahu",
+      "name": "Rahu"
+     },
+     {
+      "key": "rahu",
+      "name": "Rahu"
+     },
+     {
+      "key": "belial",
+      "name": "Belial"
+     },
+     {
+      "key": "belial",
+      "name": "Belial"
+     },
+     {
+      "key": "belial",
+      "name": "Belial"
+     },
+     {
+      "key": "belial",
+      "name": "Belial"
+     },
+     {
+      "key": "belial",
+      "name": "Belial"
+     },
+     {
+      "key": "belial",
+      "name": "Belial"
+     }
+    ],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Secondary",
+     "name": "Destroy All Shivan Sentry Guns"
+    },
+    {
+     "type": "Primary",
+     "name": "Destroy Gas Miners"
+    },
+    {
+     "type": "Primary",
+     "name": "Defend Tatenen"
+    }
+   ]
+  },
+  {
+   "file": "SM2-08.fs2",
+   "num": 27,
+   "title": "A Monster in the Mist",
+   "act": "Act II",
+   "route": "Main",
+   "where": "Nebula",
+   "caps": {
+    "friendly": [
+     {
+      "key": "sobek",
+      "name": "Maahes"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "sathanas",
+      "name": "Sathanas"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Scan Apocalypse Subsystems"
+    },
+    {
+     "type": "Bonus",
+     "name": "Destroy A Turret"
+    }
+   ]
+  },
+  {
+   "file": "SM2-09.fs2",
+   "num": 28,
+   "title": "Speaking in Tongues",
+   "act": "Act II",
+   "route": "Main",
+   "where": "Nebula",
+   "caps": {
+    "friendly": [
+     {
+      "key": "sobek",
+      "name": "Thutmose"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "iceni",
+      "name": "Iceni"
+     },
+     {
+      "key": "moloch",
+      "name": "Golab"
+     },
+     {
+      "key": "rakshasa",
+      "name": "Rephaim"
+     },
+     {
+      "key": "cain",
+      "name": "Thaumiel"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Destroy All Shivan Vessels"
+    },
+    {
+     "type": "Secondary",
+     "name": "Protect Allied Vessels"
+    }
+   ]
+  },
+  {
+   "file": "SM2-10.fs2",
+   "num": 29,
+   "title": "A Flaming Sword",
+   "act": "Act II",
+   "route": "Main",
+   "where": "Gamma Draconis \u2014 Knossos",
+   "caps": {
+    "friendly": [
+     {
+      "key": "sobek",
+      "name": "Renenet"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "sathanas",
+      "name": "Sathanas"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "triton",
+      "name": "Lambda"
+     },
+     {
+      "key": "triton",
+      "name": "Lambda"
+     },
+     {
+      "key": "triton",
+      "name": "Lambda"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "knossos",
+      "name": "Knossos Portal"
+     }
+    ],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Destroy Knossos Portal"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy Shivan Forces"
+    },
+    {
+     "type": "Secondary",
+     "name": "Lure Shivans Away for Bomb"
+    },
+    {
+     "type": "Secondary",
+     "name": "Second Diversion"
+    },
+    {
+     "type": "Secondary",
+     "name": "Protect Renrnrt"
+    }
+   ]
+  },
+  {
+   "file": "SM3-01.fs2",
+   "num": 30,
+   "title": "Bearbaiting",
+   "act": "Act III",
+   "route": "Main",
+   "where": "Gamma Draconis\u2013Capella route",
+   "caps": {
+    "friendly": [
+     {
+      "key": "hecate",
+      "name": "Phoenicia"
+     },
+     {
+      "key": "sobek",
+      "name": "Thebes"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "sathanas",
+      "name": "Sathanas"
+     },
+     {
+      "key": "demon",
+      "name": "Beleth"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Gun 1"
+    },
+    {
+     "type": "Primary",
+     "name": "Gun 2"
+    },
+    {
+     "type": "Primary",
+     "name": "Gun 3"
+    },
+    {
+     "type": "Primary",
+     "name": "Gun 4"
+    },
+    {
+     "type": "Bonus",
+     "name": "Bonus"
+    },
+    {
+     "type": "Secondary",
+     "name": "LR Flak"
+    },
+    {
+     "type": "Secondary",
+     "name": "XXX Beam 1"
+    },
+    {
+     "type": "Secondary",
+     "name": "XXX Beam 2"
+    },
+    {
+     "type": "Secondary",
+     "name": "XXX Beam 3"
+    },
+    {
+     "type": "Primary",
+     "name": "Destroy the Beleth"
+    }
+   ]
+  },
+  {
+   "file": "SM3-02.fs2",
+   "num": 31,
+   "title": "High Noon",
+   "act": "Act III",
+   "route": "Main",
+   "where": "Capella",
+   "caps": {
+    "friendly": [
+     {
+      "key": "colossus",
+      "name": "Colossus"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "sathanas",
+      "name": "Sathanas"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Assist in the kill"
+    },
+    {
+     "type": "Primary",
+     "name": "Gun 1"
+    },
+    {
+     "type": "Primary",
+     "name": "Gun 2"
+    },
+    {
+     "type": "Primary",
+     "name": "Gun 3"
+    },
+    {
+     "type": "Primary",
+     "name": "Gun 4"
+    }
+   ]
+  },
+  {
+   "file": "SM3-03.fs2",
+   "num": 32,
+   "title": "Return to Babel",
+   "act": "Act III",
+   "route": "Main",
+   "where": "Knossos/nebula route",
+   "caps": {
+    "friendly": [],
+    "hostile": [
+     {
+      "key": "cain",
+      "name": "Azmedaj"
+     },
+     {
+      "key": "rakshasa",
+      "name": "Sammael"
+     }
+    ],
+    "neutral": [
+     {
+      "key": "iceni",
+      "name": "Iceni"
+     }
+    ]
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "argo",
+      "name": "Qeb"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "azraeltr",
+      "name": "Azrael"
+     }
+    ],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Capture The Iceni"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy The Sammael"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy The Azmedaj"
+    }
+   ]
+  },
+  {
+   "file": "SM3-04.fs2",
+   "num": 33,
+   "title": "Straight, No Chaser",
+   "act": "Act III",
+   "route": "Main",
+   "where": "Uncharted nebula",
+   "caps": {
+    "friendly": [
+     {
+      "key": "hatshepsut",
+      "name": "Psamtik"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "sathanas",
+      "name": "Sathanas"
+     },
+     {
+      "key": "cain",
+      "name": "Dahaka"
+     },
+     {
+      "key": "rakshasa",
+      "name": "Sephiroth"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [
+     {
+      "key": "knossos",
+      "name": "Knossos"
+     }
+    ],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Locate Shivan Transport"
+    },
+    {
+     "type": "Primary",
+     "name": "secure the area"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy Dahaka"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy Sephiroth"
+    }
+   ]
+  },
+  {
+   "file": "SM3-05.fs2",
+   "num": 34,
+   "title": "Argonautica",
+   "act": "Act III",
+   "route": "Main",
+   "where": "Nebula near Gamma Draconis node",
+   "caps": {
+    "friendly": [
+     {
+      "key": "hecate",
+      "name": "Aquitaine"
+     },
+     {
+      "key": "aeolus",
+      "name": "Agrippa"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "moloch",
+      "name": "Abaddon"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "argo",
+      "name": "Argo"
+     }
+    ],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Protect the Aquitaine"
+    },
+    {
+     "type": "Primary",
+     "name": "Protect Transport"
+    }
+   ]
+  },
+  {
+   "file": "Loop2-1.fs2",
+   "num": 35,
+   "title": "As Lightning Fall",
+   "act": "SOC Loop II",
+   "route": "Optional",
+   "where": "Nebula",
+   "caps": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "elysium",
+      "name": "Lambda"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "argo",
+      "name": "Grall"
+     }
+    ],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Rescue Snipes"
+    },
+    {
+     "type": "Secondary",
+     "name": "Find Grall"
+    }
+   ]
+  },
+  {
+   "file": "Loop2-2.fs2",
+   "num": 36,
+   "title": "Into the Lion's Den",
+   "act": "SOC Loop II",
+   "route": "Optional",
+   "where": "Beyond the second Knossos",
+   "caps": {
+    "friendly": [],
+    "hostile": [
+     {
+      "key": "sathanas",
+      "name": "SJ Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJ Sathanas"
+     },
+     {
+      "key": "rakshasa",
+      "name": "SC Rakshasa"
+     },
+     {
+      "key": "rakshasa",
+      "name": "SC Rakshasa"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJ Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJ Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJ Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJ Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJ Sathanas"
+     },
+     {
+      "key": "rakshasa",
+      "name": "SC Rakshasa"
+     },
+     {
+      "key": "ravana",
+      "name": "SD Nebiros"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJ Preload"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [
+     {
+      "key": "commnode",
+      "name": "SC"
+     },
+     {
+      "key": "knossos",
+      "name": "Knossos"
+     },
+     {
+      "key": "commnode",
+      "name": "SC"
+     },
+     {
+      "key": "commnode",
+      "name": "SC"
+     }
+    ],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Reconnoiter"
+    },
+    {
+     "type": "Bonus",
+     "name": "kill 3 nodes"
+    },
+    {
+     "type": "Secondary",
+     "name": "kill 1 node"
+    }
+   ]
+  },
+  {
+   "file": "SM3-06.fs2",
+   "num": 37,
+   "title": "Exodus",
+   "act": "Act III",
+   "route": "Main",
+   "where": "Capella",
+   "caps": {
+    "friendly": [
+     {
+      "key": "sobek",
+      "name": "Nebtuu"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "moloch",
+      "name": "Abraxis"
+     },
+     {
+      "key": "cain",
+      "name": "Gibborim"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "argo",
+      "name": "Lambda"
+     },
+     {
+      "key": "argo",
+      "name": "Lambda"
+     },
+     {
+      "key": "hippocrates",
+      "name": "Vesalius"
+     },
+     {
+      "key": "triton",
+      "name": "Sulla"
+     }
+    ],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Protect Lambdas"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy Shivan Forces"
+    },
+    {
+     "type": "Primary",
+     "name": "Protect Vesalius"
+    },
+    {
+     "type": "Secondary",
+     "name": "Protect Sulla"
+    }
+   ]
+  },
+  {
+   "file": "SM3-07.fs2",
+   "num": 38,
+   "title": "Dunkerque",
+   "act": "Act III",
+   "route": "Main",
+   "where": "Capella \u2014 3rd Fleet HQ",
+   "caps": {
+    "friendly": [
+     {
+      "key": "orion",
+      "name": "Messana"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "ravana",
+      "name": "Nebiros"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "hippocrates",
+      "name": "Galen"
+     },
+     {
+      "key": "argo",
+      "name": "Lambda"
+     },
+     {
+      "key": "arcadia",
+      "name": "3rd Fleet HQ"
+     },
+     {
+      "key": "argo",
+      "name": "Lambda"
+     }
+    ],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Cover"
+    }
+   ]
+  },
+  {
+   "file": "SM3-08.fs2",
+   "num": 39,
+   "title": "Their Finest Hour",
+   "act": "Act III",
+   "route": "Main",
+   "where": "Capella \u2014 Gamma Draconis node",
+   "caps": {
+    "friendly": [
+     {
+      "key": "colossus",
+      "name": "Colossus"
+     },
+     {
+      "key": "aeolus",
+      "name": "Stalwart"
+     },
+     {
+      "key": "mentu",
+      "name": "Heket"
+     },
+     {
+      "key": "sobek",
+      "name": "Khepri"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "lilith",
+      "name": "Hela"
+     },
+     {
+      "key": "rakshasa",
+      "name": "Orcus"
+     },
+     {
+      "key": "cain",
+      "name": "Demogorgon"
+     },
+     {
+      "key": "cain",
+      "name": "Baal"
+     },
+     {
+      "key": "ravana",
+      "name": "Beast"
+     },
+     {
+      "key": "sathanas",
+      "name": "Sathanas"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [
+     {
+      "key": "asmodeus",
+      "name": "Asmodeus"
+     },
+     {
+      "key": "asmodeus",
+      "name": "Asmodeus"
+     },
+     {
+      "key": "mephisto",
+      "name": "Mephisto"
+     },
+     {
+      "key": "mephisto",
+      "name": "Mephisto"
+     }
+    ],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Attack Enemy Shipping"
+    },
+    {
+     "type": "Secondary",
+     "name": "Destroy Enemy Fighters"
+    },
+    {
+     "type": "Primary",
+     "name": "Defend Allied Warships"
+    }
+   ]
+  },
+  {
+   "file": "SM3-09.fs2",
+   "num": 40,
+   "title": "Clash of the Titans II",
+   "act": "Act III",
+   "route": "Main",
+   "where": "Capella \u2014 Epsilon Pegasi node",
+   "caps": {
+    "friendly": [
+     {
+      "key": "orion",
+      "name": "Bastion"
+     },
+     {
+      "key": "aeolus",
+      "name": "Malta"
+     },
+     {
+      "key": "aeolus",
+      "name": "Ertanax"
+     },
+     {
+      "key": "aeolus",
+      "name": "Templar"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Bastion"
+    }
+   ]
+  },
+  {
+   "file": "SM3-10.fs2",
+   "num": 41,
+   "title": "Apocalypse",
+   "act": "Act III",
+   "route": "Main",
+   "where": "Capella \u2014 Vega node",
+   "caps": {
+    "friendly": [
+     {
+      "key": "aeolus",
+      "name": "Malta"
+     },
+     {
+      "key": "aeolus",
+      "name": "Ertanax"
+     },
+     {
+      "key": "aeolus",
+      "name": "Templar"
+     },
+     {
+      "key": "deimos",
+      "name": "Lemnos"
+     },
+     {
+      "key": "leviathan",
+      "name": "Zollner"
+     },
+     {
+      "key": "aeolus",
+      "name": "Sparta"
+     },
+     {
+      "key": "mentu",
+      "name": "Ptah-Nu"
+     }
+    ],
+    "hostile": [
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "sathanas",
+      "name": "SJD Sathanas"
+     },
+     {
+      "key": "rakshasa",
+      "name": "Thanatos"
+     },
+     {
+      "key": "cain",
+      "name": "Bane"
+     },
+     {
+      "key": "cain",
+      "name": "Melchom"
+     }
+    ],
+    "neutral": []
+   },
+   "civ": {
+    "friendly": [
+     {
+      "key": "argo",
+      "name": "Notus"
+     },
+     {
+      "key": "argo",
+      "name": "Lambda"
+     },
+     {
+      "key": "argo",
+      "name": "Lambda"
+     },
+     {
+      "key": "argo",
+      "name": "Lambda"
+     },
+     {
+      "key": "argo",
+      "name": "Lambda"
+     },
+     {
+      "key": "hippocrates",
+      "name": "Sydenham"
+     },
+     {
+      "key": "hippocrates",
+      "name": "Boerhaave"
+     },
+     {
+      "key": "triton",
+      "name": "Io"
+     },
+     {
+      "key": "triton",
+      "name": "Miranda"
+     },
+     {
+      "key": "poseidon",
+      "name": "Sophron"
+     },
+     {
+      "key": "bes",
+      "name": "Har-Wer"
+     },
+     {
+      "key": "bes",
+      "name": "Kebechet"
+     },
+     {
+      "key": "faustus",
+      "name": "Darwin"
+     },
+     {
+      "key": "bes",
+      "name": "Mihos"
+     },
+     {
+      "key": "bes",
+      "name": "Resheph"
+     },
+     {
+      "key": "sac3",
+      "name": "VAC 4"
+     },
+     {
+      "key": "bes",
+      "name": "Nephthys"
+     },
+     {
+      "key": "sac3",
+      "name": "VAC 4"
+     },
+     {
+      "key": "bes",
+      "name": "Sesmu"
+     },
+     {
+      "key": "sac3",
+      "name": "VAC 4"
+     },
+     {
+      "key": "anuket",
+      "name": "Hez-Ur"
+     },
+     {
+      "key": "bes",
+      "name": "Duamutef"
+     },
+     {
+      "key": "bes",
+      "name": "Ennead"
+     },
+     {
+      "key": "hippocrates",
+      "name": "Herophilus"
+     }
+    ],
+    "hostile": [],
+    "neutral": []
+   },
+   "goals": [
+    {
+     "type": "Primary",
+     "name": "Defend"
+    }
+   ]
+  }
+ ]
+}

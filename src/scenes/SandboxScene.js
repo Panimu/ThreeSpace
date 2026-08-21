@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { IMAGES } from '../manifest.js';
-import { SHIPS, STRIKECRAFT, WEAPONS } from '../ships.js';
+import { SHIPS, STRIKECRAFT, WEAPONS, shipSpec } from '../ships.js';
 import { assignName } from '../names.js';
 import { Tactical } from '../tactical.js';
 import {
@@ -68,6 +68,10 @@ const TAP_MS = 400;
 const ARC_BEAM = 100 * DEG;   // port/starboard mounts, either side of abeam
 const ARC_CENTRE = 155 * DEG; // centreline mounts, either side of the bow
 
+// How close a hostile has to be before a freighter stops pretending it is
+// safe and runs for it.
+const CIV_FLEE_RANGE = 1900;
+
 // Order-row and contact read-out geometry.
 const ORDER_X = 38;
 const CONTACT_H = 78;
@@ -95,8 +99,13 @@ export class SandboxScene extends Phaser.Scene {
         }
       }
     }
-    const enemyNames = this.mission?.names?.B ?? [];
-    this.enemySpecs.forEach((e, i) => { e.name = e.name ?? enemyNames[i]; });
+    // Freighters, installations and sentry guns present in the operation.
+    // They are appended last on each side so the fleet tabs — which only ever
+    // address warships — keep indices 0..conCount-1.
+    const civilians = this.mission?.civilians;
+    for (const c of civilians?.A ?? []) this.playerSpecs.push({ ...c, attached: true });
+    for (const c of civilians?.B ?? []) this.enemySpecs.push({ ...c });
+    this.conCount = this.playerSpecs.filter((sp) => !!SHIPS[sp.key]).length;
     this.physics.world.setBounds(0, 0, WORLD_W, WORLD_H);
     ensureNebula(this);
     ensureBeamTextures(this);
@@ -129,14 +138,20 @@ export class SandboxScene extends Phaser.Scene {
     this.physics.add.overlap(this.shots.B, this.capGroup.A, onShot);
     this.physics.add.overlap(this.shots.B, this.strikeGroup.A, onShot);
 
-    this.playerSpecs.forEach((spec, i) => {
-      const y = WORLD_H / 2 + (i - (this.playerSpecs.length - 1) / 2) * 520;
-      this.fleets.A.push(this.spawnCapital(spec.key, 1200, y, 20 * DEG, 'A', spec));
-    });
-    this.enemySpecs.forEach((spec, i) => {
-      const y = WORLD_H / 2 + (i - (this.enemySpecs.length - 1) / 2) * 520;
-      this.fleets.B.push(this.spawnCapital(spec.key, WORLD_W - 1400, y, 200 * DEG, 'B', spec));
-    });
+    // Warships form a line; anything that cannot shoot back starts behind it,
+    // spread wider so an installation does not sit on top of its escort.
+    const line = (specs, side, xWar, xCiv, facing) => {
+      const war = specs.filter((sp) => !!SHIPS[sp.key]);
+      const civ = specs.filter((sp) => !SHIPS[sp.key]);
+      const place = (list, x, gap) => list.forEach((spec, i) => {
+        const y = WORLD_H / 2 + (i - (list.length - 1) / 2) * gap;
+        this.fleets[side].push(this.spawnCapital(spec.key, x, y, facing, side, spec));
+      });
+      place(war, xWar, 520);
+      place(civ, xCiv, 900);
+    };
+    line(this.playerSpecs, 'A', 1200, 620, 20 * DEG);
+    line(this.enemySpecs, 'B', WORLD_W - 1400, WORLD_W - 800, 200 * DEG);
     this.conIdx = 0;
 
     const biggest = Math.max(...[...this.fleets.A, ...this.fleets.B]
@@ -310,7 +325,10 @@ export class SandboxScene extends Phaser.Scene {
   }
 
   spawnCapital(key, x, y, facing, side, state = {}) {
-    const spec = SHIPS[key];
+    const spec = shipSpec(key);
+    // Non-combatants ride in the fleet lists so targeting, damage and the
+    // after-action report all reach them, but they never take the con.
+    const civ = !SHIPS[key];
     const ship = this.physics.add.image(x, y, this.makeDamageCanvas(key));
     ship.damageCanvas = this.textures.get(ship.texture.key);
     // Horizontal art: sprite width is the hull length; scale to display length.
@@ -321,6 +339,7 @@ export class SandboxScene extends Phaser.Scene {
     ship.shipName = state.name ?? assignName(spec, this.usedNames);
     if (state.name) this.usedNames.add(state.name);
     ship.attached = !!state.attached;
+    ship.civ = civ;
     // Per-hull battle record for the after-action report.
     ship.stats = { dealt: 0, taken: 0, mountsLost: 0 };
     // Campaign ships arrive carrying the damage they left the last battle with.
@@ -1104,10 +1123,13 @@ export class SandboxScene extends Phaser.Scene {
       ship.destroy();
       // Losing the conned ship hands the helm to the next hull in the line.
       if (side === 'A' && !this.fleets.A.some((s, i) => i === this.conIdx && s.active)) {
-        const next = this.fleets.A.findIndex((s) => s.active && !s.dying);
+        const next = this.fleets.A.findIndex((s) => s.active && !s.dying && !s.civ);
         if (next >= 0) this.setCon(next);
       }
-      if (!this.fleets[side].some((s) => s.active)) {
+      // A side is beaten when its warships are gone — a surviving freighter
+      // is not a fleet in being.
+      const fought = this.fleets[side].filter((s) => !s.civ);
+      if (!(fought.length ? fought : this.fleets[side]).some((s) => s.active)) {
         this.endMission(side === 'B');
       }
     });
@@ -1241,8 +1263,9 @@ export class SandboxScene extends Phaser.Scene {
       () => this.cycleSpeed(), { size: 11, color: '#ffcf9a' });
 
     // Fleet tabs: tap to take the con of another ship in your group.
-    this.fleetTabs = this.fleets.A.map((ship, i) => button('', (w, h) => this.tabRect(i, w, h),
-      () => { this.setCon(i); }, { size: 11 }));
+    this.fleetTabs = this.fleets.A.slice(0, this.conCount)
+      .map((ship, i) => button('', (w, h) => this.tabRect(i, w, h),
+        () => { this.setCon(i); }, { size: 11 }));
 
     // Order rows. Fleet orders sit closest to the panel; the air-group row
     // stacks above it and only exists when a carrier is present.
@@ -1374,7 +1397,7 @@ export class SandboxScene extends Phaser.Scene {
   // Fleet tabs share the width left of the minimap, so three capitals still
   // fit across a portrait phone.
   tabRect(i, w) {
-    const n = Math.max(1, this.fleets.A.length);
+    const n = Math.max(1, this.conCount);
     const room = w - Math.max(this.mmW, this.contactW()) - 76;
     const span = Math.max(108, Math.min(room, 128 * n));
     const tw = span / n - 6;
@@ -1542,7 +1565,7 @@ export class SandboxScene extends Phaser.Scene {
       .strokeRect(sr.x, sr.y, sr.w, sr.h);
 
     // Fleet tabs (chrome; the tab text lives in fleetTabs).
-    this.fleets.A.forEach((ship, i) => {
+    this.fleets.A.slice(0, this.conCount).forEach((ship, i) => {
       const r = this.tabRect(i, w);
       const conned = i === this.conIdx;
       g.fillStyle(0x11161f, conned ? 0.9 : 0.6).fillRect(r.x, r.y, r.w, r.h);
@@ -1606,6 +1629,28 @@ export class SandboxScene extends Phaser.Scene {
 
   anyHangar() {
     return [...this.fleets.A, ...this.fleets.B].some((s) => s.spec.hangar);
+  }
+
+  // Non-combatants do not fight back. Installations and sentry guns hold
+  // their orbit; hulls with engines turn their stern to the nearest threat and
+  // run, which is what makes an escort a race rather than a formality.
+  civilianDrive(ship, dt) {
+    if (ship.spec.station) {
+      ship.throttle = 0;
+      ship.setVelocity(0, 0);
+      ship.syncAngle();
+      return;
+    }
+    const foe = this.nearestOf(ship.x, ship.y, this.fleets[ship.side === 'A' ? 'B' : 'A']);
+    const dist = foe ? Phaser.Math.Distance.Between(ship.x, ship.y, foe.x, foe.y) : Infinity;
+    if (foe && dist < CIV_FLEE_RANGE) {
+      const away = Phaser.Math.Angle.Between(foe.x, foe.y, ship.x, ship.y);
+      ship.facing = Phaser.Math.Angle.RotateTo(ship.facing, away, ship.spec.turn * DEG * dt);
+      ship.throttle = 1;
+    } else {
+      ship.throttle = 0.12;
+    }
+    this.steerCapital(ship, dt);
   }
 
   // Un-conned friendlies hold formation on the conned ship: line abreast with
@@ -1692,7 +1737,7 @@ export class SandboxScene extends Phaser.Scene {
       .setColor(this.speedIdx > 0 ? '#ffb454' : '#8593a6');
     // The exit button asks before throwing the battle away.
     this.quitText.setText(this.game.loop.time < this.quitArmed ? 'TAP AGAIN TO ABANDON' : '');
-    this.fleets.A.forEach((ship, i) => {
+    this.fleets.A.slice(0, this.conCount).forEach((ship, i) => {
       const pct = ship.active ? Math.max(0, Math.round((ship.hull / ship.spec.hull) * 100)) : 0;
       const r = this.tabRect(i, sw);
       const mark = i === this.conIdx ? '*' : `${i + 1}`;
@@ -1730,8 +1775,10 @@ export class SandboxScene extends Phaser.Scene {
     let slot = 0;
     this.fleets.A.forEach((ship, i) => {
       if (!ship.active || ship.dying) return;
-      const isCon = i === this.conIdx;
-      if (!isCon) {
+      const isCon = i === this.conIdx && !ship.civ;
+      if (ship.civ) {
+        this.civilianDrive(ship, dt);
+      } else if (!isCon) {
         ship.speedMul = 1;
         if (this.fleetOrder === 'form') {
           slot += 1;
@@ -1750,7 +1797,8 @@ export class SandboxScene extends Phaser.Scene {
     for (const ship of this.fleets.B) {
       if (!ship.active || ship.dying || this.over) continue;
       const target = this.nearestOf(ship.x, ship.y, this.fleets.A);
-      this.combatDrive(ship, target, dt);
+      if (ship.civ) this.civilianDrive(ship, dt);
+      else this.combatDrive(ship, target, dt);
       this.runTurrets(ship, 'A', time);
       this.tryBattery(ship, target, time);
     }
