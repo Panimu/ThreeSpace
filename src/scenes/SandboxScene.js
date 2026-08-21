@@ -143,8 +143,12 @@ export class SandboxScene extends Phaser.Scene {
     this.physics.add.overlap(this.shots.B, this.capGroup.A, onShot);
     this.physics.add.overlap(this.shots.B, this.strikeGroup.A, onShot);
 
-    // Warships form a line; anything that cannot shoot back starts behind it,
-    // spread wider so an installation does not sit on top of its escort.
+    // Warships form a line. Your own non-combatants start behind you, where a
+    // charge belongs. Theirs sit out in front of their escort, roughly midway
+    // between the fleets: a depot, a mining rig or a portal is the thing you
+    // jump in on, and putting it behind the guard makes a raid impossible
+    // whenever the guard is a juggernaut and a race when it is not.
+    // Both are spread wider so an installation does not sit on its escort.
     const line = (specs, side, xWar, xCiv, facing) => {
       const war = specs.filter((sp) => !!SHIPS[sp.key]);
       const civ = specs.filter((sp) => !SHIPS[sp.key]);
@@ -156,7 +160,7 @@ export class SandboxScene extends Phaser.Scene {
       place(civ, xCiv, 900);
     };
     line(this.playerSpecs, 'A', 1200, 620, 20 * DEG);
-    line(this.enemySpecs, 'B', WORLD_W - 1400, WORLD_W - 800, 200 * DEG);
+    line(this.enemySpecs, 'B', WORLD_W - 1400, WORLD_W - 2650, 200 * DEG);
     this.conIdx = 0;
 
     const biggest = Math.max(...[...this.fleets.A, ...this.fleets.B]
@@ -1131,18 +1135,18 @@ export class SandboxScene extends Phaser.Scene {
         const next = this.fleets.A.findIndex((s) => s.active && !s.dying && !s.civ);
         if (next >= 0) this.setCon(next);
       }
-      // The two sides lose differently. You are beaten when your warships are
-      // gone — a surviving freighter is not a fleet in being. They are beaten
-      // only when nothing of theirs is left, because "destroy all hostiles"
-      // includes the depot, and a raid must not be won by killing its escort.
-      const beaten = side === 'A'
-        ? !this.fleets.A.some((s) => s.active && !s.civ)
-        : !this.fleets.B.some((s) => s.active);
+      // Either side is beaten when its warships are gone — a surviving
+      // freighter is not a fleet in being, and making you hunt one down to
+      // finish a battle is busywork, not a mission.
+      const beaten = !this.fleets[side].some((s) => s.active && !s.civ);
       if (beaten) {
         // Settle the objective first. A raid whose marks are already down was
         // achieved, even if the exchange that finished them finished you too.
         this.checkObjective();
-        if (!this.over) this.endMission(side === 'B');
+        // A raid is decided by its marks and nothing else: killing the escort
+        // is not the mission, and a depot still afloat is a mission unfinished.
+        const raiding = side === 'B' && this.mission?.objective?.kind === 'raid';
+        if (!this.over && !raiding) this.endMission(side === 'B');
       }
     });
   }
@@ -1427,8 +1431,12 @@ export class SandboxScene extends Phaser.Scene {
   // tweens run faster directly, arcade physics runs faster as its per-step
   // budget shrinks. All three persist across scene restarts, so create()
   // always calls this.
-  applySpeed() {
-    const mult = this.paused ? 0 : SPEEDS[this.speedIdx];
+  //
+  // `mult` is the *effective* multiplier, which update() lowers when the frame
+  // rate cannot carry the chosen speed. Every clock has to move together — a
+  // sim clock that lags Phaser's own makes shots expire before they arrive.
+  applySpeed(mult = this.paused ? 0 : SPEEDS[this.speedIdx]) {
+    this.simMult = mult;
     this.time.timeScale = mult;
     this.tweens.timeScale = mult;
     this.physics.world.timeScale = mult > 0 ? 1 / mult : 1;
@@ -1663,8 +1671,13 @@ export class SandboxScene extends Phaser.Scene {
   // Non-combatants do not fight back. Installations and sentry guns hold
   // their orbit; hulls with engines turn their stern to the nearest threat and
   // run, which is what makes an escort a race rather than a formality.
+  //
+  // Running stops when the escort is gone. A freighter alone in a system with
+  // a hostile cruiser is not going anywhere, and chasing one across the map to
+  // finish a mission is busywork.
   civilianDrive(ship, dt) {
-    if (ship.spec.station) {
+    const escorted = this.fleets[ship.side].some((s) => s.active && !s.civ);
+    if (ship.spec.station || !escorted) {
       ship.throttle = 0;
       ship.setVelocity(0, 0);
       ship.syncAngle();
@@ -1710,13 +1723,16 @@ export class SandboxScene extends Phaser.Scene {
     // The battle runs on its own clock so speed and pause scale the whole
     // simulation — movement, reloads, beam envelopes and mission timers alike.
     //
-    // The step is capped: arcade overlaps are tested once per frame, so a
-    // 3x-speed bolt crossing more than its own length between frames passes
-    // straight through its target. On a slow device that turned a gunfight
-    // into a long-range stalemate. Past the cap the battle simply runs slower
-    // in real time instead of running wrong.
-    const mult = this.paused ? 0 : SPEEDS[this.speedIdx];
-    const delta = Math.min(realDelta * mult, MAX_STEP);
+    // Speed is capped by the frame rate: arcade overlaps are tested once per
+    // frame, so a 3x bolt crossing more than its own length between frames
+    // passes straight through its target. On a slow device that turned a
+    // gunfight into a long-range stalemate. Past the cap the battle runs
+    // slower in real time rather than running wrong — and the cap is applied
+    // through applySpeed() so Phaser's clocks stay in step with ours.
+    const want = this.paused ? 0 : SPEEDS[this.speedIdx];
+    const safe = want ? Math.min(want, MAX_STEP / Math.max(1, realDelta)) : 0;
+    if (Math.abs(safe - (this.simMult ?? -1)) > 0.05) this.applySpeed(safe);
+    const delta = realDelta * this.simMult;
     this.simNow += delta;
     const time = this.simNow;
     const dt = delta / 1000;

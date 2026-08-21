@@ -53,7 +53,7 @@ export const MISSIONS = [
       B: [{ key: 'triton', name: 'Capricorn' }, { key: 'poseidon', name: 'Capricorn' },
         { key: 'mjolnir', name: 'Sentry' }, { key: 'mjolnir', name: 'Sentry' }],
     },
-    objective: { kind: 'raid', targets: ['Capricorn', 'Sentry'] },
+    objective: { kind: 'raid', targets: ['Capricorn'] },
   },
   {
     id: 'SM1-03', title: 'The Romans Blunder', act: 'ACT I', where: 'Deneb–Sirius jump route',
