@@ -1753,7 +1753,11 @@ export class SandboxScene extends Phaser.Scene {
     this.updateStrike(dt, time);
     this.checkObjective();
     if (this.mission) {
+      // The orders line shares its row with the contact box on a portrait
+      // phone, so it wraps into whatever is left rather than running under it.
+      const objRoom = Math.max(110, sw - 52 - this.contactW() - 16);
       this.objText.setPosition(UIX + 52, this.hudBottom() + 30)
+        .setWordWrapWidth(objRoom)
         .setText(this.objectiveLine());
     }
 

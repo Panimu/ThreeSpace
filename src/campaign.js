@@ -65,7 +65,7 @@ export const MISSIONS = [
     attach: [{ key: 'hatshepsut', name: 'Psamtik' }],
     civilians: { B: [{ key: 'triton', name: 'Capricorn' }] },
     objective: { kind: 'survive', seconds: 150 },
-    reward: 'aeolus',
+    reward: 'deimos',
   },
   {
     id: 'SM1-04', title: 'A Lion at the Door', act: 'ACT I', where: 'Gamma Draconis node',
@@ -106,7 +106,7 @@ export const MISSIONS = [
       + 'kills them and the next operation is named for it. The cruisers named '
       + 'in retail\u2019s secondaries are the objective; the corvettes are the cost.',
     objective: { kind: 'raid', targets: ['Asuras', 'Iblis'] },
-    reward: 'deimos',
+    reward: 'mentu',
   },
   {
     id: 'SM1-07', title: 'Slaying Ravana', act: 'ACT I', where: 'Nebula beyond Gamma Draconis',
@@ -117,7 +117,7 @@ export const MISSIONS = [
     attach: [{ key: 'sobek', name: 'Khenmu' }, { key: 'mentu', name: 'Somtus' },
       { key: 'deimos', name: 'Yakiba' }],
     objective: { kind: 'destroy' },
-    reward: 'mentu',
+    reward: 'sobek',
   },
   {
     id: 'SM1-08', title: 'The Sixth Wonder', act: 'ACT I', where: 'Epsilon Pegasi — Enif Station',
@@ -158,7 +158,7 @@ export const MISSIONS = [
       { key: 'fenris', name: 'Refute' }],
     attach: [{ key: 'colossus', name: 'Colossus' }, { key: 'leviathan', name: 'Rampart' }],
     objective: { kind: 'destroy' },
-    reward: 'sobek',
+    reward: 'typhon',
     loopOffer: 'LOOP1-1',
   },
 
@@ -511,9 +511,11 @@ export function nextMissionId(id) {
 // force — retail's second operation puts an NTF corvette over the Deneb depot
 // with no friendly capital in the system, and a lone 260-metre hull loses that
 // fight every time. Three hulls fills the sortie limit from the start, so the
-// campaign's growth is in what you command, not how much.
+// campaign's growth is in what you command, not how much. The Aeolus is in
+// there because two Fenris and a Leviathan is a coin flip against the Deimos,
+// and operation two is too early for a coin flip.
 export const STARTING_FLEET = [
   { key: 'fenris', name: 'Vigilant' },
-  { key: 'fenris', name: 'Krios' },
   { key: 'leviathan', name: 'Hood' },
+  { key: 'aeolus', name: 'Krios' },
 ];
