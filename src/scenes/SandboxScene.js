@@ -74,6 +74,9 @@ const ARC_CENTRE = 155 * DEG; // centreline mounts, either side of the bow
 const CIV_FLEE_RANGE = 1900;
 const CIV_ROAM = 2200;
 
+// Longest slice of simulated time one frame may advance (ms).
+const MAX_STEP = 50;
+
 // Order-row and contact read-out geometry.
 const ORDER_X = 38;
 const CONTACT_H = 78;
@@ -1706,8 +1709,14 @@ export class SandboxScene extends Phaser.Scene {
   update(realTime, realDelta) {
     // The battle runs on its own clock so speed and pause scale the whole
     // simulation — movement, reloads, beam envelopes and mission timers alike.
+    //
+    // The step is capped: arcade overlaps are tested once per frame, so a
+    // 3x-speed bolt crossing more than its own length between frames passes
+    // straight through its target. On a slow device that turned a gunfight
+    // into a long-range stalemate. Past the cap the battle simply runs slower
+    // in real time instead of running wrong.
     const mult = this.paused ? 0 : SPEEDS[this.speedIdx];
-    const delta = realDelta * mult;
+    const delta = Math.min(realDelta * mult, MAX_STEP);
     this.simNow += delta;
     const time = this.simNow;
     const dt = delta / 1000;
