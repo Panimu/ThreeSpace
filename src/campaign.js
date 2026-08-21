@@ -18,7 +18,11 @@
 //   attach              ships lent to you for this operation only — they fight
 //                       under your command but never join the roster
 //   civilians           non-combatants present: A fights with you, B against
-//   objective           { kind: 'destroy' | 'survive' | 'protect', ... }
+//   objective           what winning means:
+//                         destroy  — every hostile warship
+//                         survive  — hold the action for `seconds`
+//                         protect  — named `ship` must live
+//                         raid     — named `targets` must die, then withdraw
 //   canonNote           why this mission deviates from the canon roster;
 //                       `scripts/check-campaign.mjs` reads it and stops
 //                       treating the deviation as an error
@@ -41,14 +45,15 @@ export const MISSIONS = [
   {
     id: 'SM1-02', title: 'The Place of Chariots', act: 'ACT I', where: 'Deneb asteroid belt',
     brief: 'Intelligence puts an NTF supply depot inside the Deneb belt — Capricorn '
-      + 'freighters under sentry cover. Break the escort and put the depot out of '
-      + 'the war. The rebels have sited their guns well.',
+      + 'freighters under sentry cover, with a corvette riding escort. Kill the '
+      + 'depot. You are not here to win a fleet action against a Deimos and you '
+      + 'will not be given a second chance to learn that.',
     enemy: [{ key: 'deimos' }],
     civilians: {
       B: [{ key: 'triton', name: 'Capricorn' }, { key: 'poseidon', name: 'Capricorn' },
         { key: 'mjolnir', name: 'Sentry' }, { key: 'mjolnir', name: 'Sentry' }],
     },
-    objective: { kind: 'destroy' },
+    objective: { kind: 'raid', targets: ['Capricorn', 'Sentry'] },
   },
   {
     id: 'SM1-03', title: 'The Romans Blunder', act: 'ACT I', where: 'Deneb–Sirius jump route',
@@ -60,7 +65,7 @@ export const MISSIONS = [
     attach: [{ key: 'hatshepsut', name: 'Psamtik' }],
     civilians: { B: [{ key: 'triton', name: 'Capricorn' }] },
     objective: { kind: 'survive', seconds: 150 },
-    reward: 'leviathan',
+    reward: 'aeolus',
   },
   {
     id: 'SM1-04', title: 'A Lion at the Door', act: 'ACT I', where: 'Gamma Draconis node',
@@ -91,12 +96,16 @@ export const MISSIONS = [
   {
     id: 'SM1-06', title: 'The Great Hunt', act: 'ACT I', where: 'Nebula beyond Gamma Draconis',
     brief: 'Search and destroy with the corvettes Actium and Lysander. Command '
-      + 'expects cruisers. Command has been wrong before — keep the Actium alive '
-      + 'whatever comes out of the murk.',
+      + 'expects cruisers. Command has been wrong before — if something bigger '
+      + 'comes out of the murk, break off and keep your hull. The corvettes have '
+      + 'the same orders. Whether they follow them is their captains\u2019 business.',
     enemy: [{ key: 'cain', name: 'Asuras' }, { key: 'rakshasa', name: 'Iblis' },
       { key: 'ravana', name: 'Beleth' }],
     attach: [{ key: 'deimos', name: 'Actium' }, { key: 'deimos', name: 'Lysander' }],
-    objective: { kind: 'protect', ship: 'Actium' },
+    canonNote: 'Retail\u2019s primary is "Protect Corvettes" — but the Ravana '
+      + 'kills them and the next operation is named for it. The cruisers named '
+      + 'in retail\u2019s secondaries are the objective; the corvettes are the cost.',
+    objective: { kind: 'raid', targets: ['Asuras', 'Iblis'] },
     reward: 'deimos',
   },
   {
@@ -135,7 +144,8 @@ export const MISSIONS = [
       A: [{ key: 'triton', name: 'Parracombe' }, { key: 'zephyrus', name: 'Avila' },
         { key: 'elysium', name: 'Hauler' }],
       B: [{ key: 'mjolnir', name: 'Gun One' }, { key: 'mjolnir', name: 'Gun Two' },
-        { key: 'mjolnir', name: 'Gun Three' }, { key: 'mjolnir', name: 'Gun Four' }],
+        { key: 'mjolnir', name: 'Gun Three' }, { key: 'mjolnir', name: 'Gun Four' },
+        { key: 'mjolnir', name: 'Gun Five' }, { key: 'mjolnir', name: 'Gun Six' }],
     },
     objective: { kind: 'protect', ship: 'Parracombe' },
   },
@@ -148,7 +158,7 @@ export const MISSIONS = [
       { key: 'fenris', name: 'Refute' }],
     attach: [{ key: 'colossus', name: 'Colossus' }, { key: 'leviathan', name: 'Rampart' }],
     objective: { kind: 'destroy' },
-    reward: 'aeolus',
+    reward: 'sobek',
     loopOffer: 'LOOP1-1',
   },
 
@@ -189,7 +199,7 @@ export const MISSIONS = [
       B: [{ key: 'mjolnir', name: 'Alastor' }],
     },
     objective: { kind: 'survive', seconds: 150 },
-    reward: 'deimos',
+    reward: 'aten',
   },
 
   // ---- Act II: the rebellion ends, something worse begins ----
@@ -279,7 +289,7 @@ export const MISSIONS = [
       A: [{ key: 'setekh', name: 'Junit' }],
       B: [{ key: 'rahu', name: 'Rahu' }, { key: 'belial', name: 'Belial' }],
     },
-    objective: { kind: 'survive', seconds: 170 },
+    objective: { kind: 'raid', targets: ['Rahu', 'Belial'] },
   },
   {
     id: 'SM2-08', title: 'A Monster in the Mist', act: 'ACT II', where: 'Nebula',
@@ -311,7 +321,7 @@ export const MISSIONS = [
       A: [{ key: 'triton', name: 'Lambda' }],
       B: [{ key: 'knossos', name: 'Knossos Portal' }],
     },
-    objective: { kind: 'survive', seconds: 210 },
+    objective: { kind: 'raid', targets: ['Knossos Portal'] },
   },
 
   // ---- Act III: Capella ----
@@ -391,12 +401,12 @@ export const MISSIONS = [
     brief: 'Through the second portal, into whatever the Shivans call home. Record '
       + 'what is massing there and get back through the node. Nothing about this '
       + 'is a fight you can win.',
-    enemy: [{ key: 'sathanas', name: 'Ashtaroth' }, { key: 'sathanas', name: 'Belial' },
+    enemy: [{ key: 'sathanas', name: 'Ashtaroth' },
       { key: 'ravana', name: 'Nebiros' }, { key: 'rakshasa', name: 'Orcus' }],
     civilians: {
       B: [{ key: 'commnode', name: 'Comm Node' }, { key: 'knossos', name: 'Knossos' }],
     },
-    objective: { kind: 'survive', seconds: 160 },
+    objective: { kind: 'survive', seconds: 75 },
     reward: 'hades',
   },
 
@@ -497,5 +507,13 @@ export function nextMissionId(id) {
   return at >= 0 ? MAIN_LINE[at + 1] ?? null : null;
 }
 
-// Your first command.
-export const STARTING_FLEET = [{ key: 'fenris', name: 'Vigilant' }];
+// Your first command: a light cruiser division. One Fenris is not a task
+// force — retail's second operation puts an NTF corvette over the Deneb depot
+// with no friendly capital in the system, and a lone 260-metre hull loses that
+// fight every time. Three hulls fills the sortie limit from the start, so the
+// campaign's growth is in what you command, not how much.
+export const STARTING_FLEET = [
+  { key: 'fenris', name: 'Vigilant' },
+  { key: 'fenris', name: 'Krios' },
+  { key: 'leviathan', name: 'Hood' },
+];

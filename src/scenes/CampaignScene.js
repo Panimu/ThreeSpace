@@ -77,11 +77,13 @@ export class CampaignScene extends Phaser.Scene {
         10, '#8593a6', { ox: 0.5, wrap: w - 40, align: 'center' });
       y += 20;
     }
-    const objLine = mission.objective.kind === 'survive'
-      ? `HOLD THE ACTION FOR ${Math.round(mission.objective.seconds / 60 * 10) / 10} MINUTES`
-      : mission.objective.kind === 'protect'
-        ? `${mission.objective.ship.toUpperCase()} MUST SURVIVE`
-        : 'DESTROY ALL HOSTILE WARSHIPS';
+    const kinds = {
+      survive: () => `HOLD THE ACTION FOR ${Math.round(mission.objective.seconds / 60 * 10) / 10} MINUTES`,
+      protect: () => `${mission.objective.ship.toUpperCase()} MUST SURVIVE`,
+      raid: () => `DESTROY ${mission.objective.targets.join(', ').toUpperCase()}`,
+      destroy: () => 'DESTROY ALL HOSTILE WARSHIPS',
+    };
+    const objLine = (kinds[mission.objective.kind] ?? kinds.destroy)();
     this.text(w / 2, y, objLine, 11, '#ffb454', { ox: 0.5 });
     y += 24;
 

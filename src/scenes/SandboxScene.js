@@ -69,8 +69,10 @@ const ARC_BEAM = 100 * DEG;   // port/starboard mounts, either side of abeam
 const ARC_CENTRE = 155 * DEG; // centreline mounts, either side of the bow
 
 // How close a hostile has to be before a freighter stops pretending it is
-// safe and runs for it.
+// safe and runs for it, and how far it will run before it gives up. Without
+// the second number a raid becomes a stern chase across the whole map.
 const CIV_FLEE_RANGE = 1900;
+const CIV_ROAM = 2200;
 
 // Order-row and contact read-out geometry.
 const ORDER_X = 38;
@@ -1126,11 +1128,18 @@ export class SandboxScene extends Phaser.Scene {
         const next = this.fleets.A.findIndex((s) => s.active && !s.dying && !s.civ);
         if (next >= 0) this.setCon(next);
       }
-      // A side is beaten when its warships are gone — a surviving freighter
-      // is not a fleet in being.
-      const fought = this.fleets[side].filter((s) => !s.civ);
-      if (!(fought.length ? fought : this.fleets[side]).some((s) => s.active)) {
-        this.endMission(side === 'B');
+      // The two sides lose differently. You are beaten when your warships are
+      // gone — a surviving freighter is not a fleet in being. They are beaten
+      // only when nothing of theirs is left, because "destroy all hostiles"
+      // includes the depot, and a raid must not be won by killing its escort.
+      const beaten = side === 'A'
+        ? !this.fleets.A.some((s) => s.active && !s.civ)
+        : !this.fleets.B.some((s) => s.active);
+      if (beaten) {
+        // Settle the objective first. A raid whose marks are already down was
+        // achieved, even if the exchange that finished them finished you too.
+        this.checkObjective();
+        if (!this.over) this.endMission(side === 'B');
       }
     });
   }
@@ -1162,6 +1171,7 @@ export class SandboxScene extends Phaser.Scene {
       return this.mission ? 'TASK FORCE LOST' : 'FLEET LOST';
     }
     if (reason === 'held') return 'WITHDRAWAL AUTHORISED';
+    if (reason === 'raid') return 'OBJECTIVE DESTROYED';
     if (obj?.kind === 'protect') return `${obj.ship.toUpperCase()} SECURED`;
     return 'HOSTILE FLEET DESTROYED';
   }
@@ -1455,7 +1465,9 @@ export class SandboxScene extends Phaser.Scene {
   }
 
   // Mission objectives. Destroy is the sandbox default and needs no watching;
-  // a hold-out has a clock, and an escort fails the moment its charge dies.
+  // a hold-out has a clock, an escort fails the moment its charge dies, and a
+  // raid ends the instant its marks are gone — you are not there to win the
+  // fleet action, you are there to kill the depot and leave.
   checkObjective() {
     const obj = this.mission?.objective;
     if (!obj || this.over) return;
@@ -1464,7 +1476,16 @@ export class SandboxScene extends Phaser.Scene {
     } else if (obj.kind === 'protect') {
       const guard = this.fleets.A.find((sh) => sh.shipName === obj.ship);
       if (guard && !guard.active) this.endMission(false, 'charge');
+    } else if (obj.kind === 'raid') {
+      const marks = this.raidMarks();
+      if (marks.length && marks.every((sh) => !sh.active)) this.endMission(true, 'raid');
     }
+  }
+
+  // The named hulls a raid is actually for.
+  raidMarks() {
+    const want = this.mission?.objective?.targets ?? [];
+    return this.fleets.B.filter((sh) => want.includes(sh.shipName));
   }
 
   // One line of orders, kept short enough for a portrait phone.
@@ -1480,6 +1501,11 @@ export class SandboxScene extends Phaser.Scene {
       const guard = this.fleets.A.find((sh) => sh.shipName === obj.ship);
       const pct = guard?.active ? Math.max(0, Math.round((guard.hull / guard.spec.hull) * 100)) : 0;
       return `PROTECT ${obj.ship.toUpperCase()} ${pct}%`;
+    }
+    if (obj.kind === 'raid') {
+      const marks = this.raidMarks();
+      const down = marks.filter((sh) => !sh.active).length;
+      return `RAID ${down}/${marks.length} DOWN`;
     }
     return 'DESTROY ALL HOSTILES';
   }
@@ -1641,9 +1667,11 @@ export class SandboxScene extends Phaser.Scene {
       ship.syncAngle();
       return;
     }
+    ship.anchor ??= { x: ship.x, y: ship.y };
     const foe = this.nearestOf(ship.x, ship.y, this.fleets[ship.side === 'A' ? 'B' : 'A']);
     const dist = foe ? Phaser.Math.Distance.Between(ship.x, ship.y, foe.x, foe.y) : Infinity;
-    if (foe && dist < CIV_FLEE_RANGE) {
+    const strayed = Phaser.Math.Distance.Between(ship.x, ship.y, ship.anchor.x, ship.anchor.y) > CIV_ROAM;
+    if (foe && dist < CIV_FLEE_RANGE && !strayed) {
       const away = Phaser.Math.Angle.Between(foe.x, foe.y, ship.x, ship.y);
       ship.facing = Phaser.Math.Angle.RotateTo(ship.facing, away, ship.spec.turn * DEG * dt);
       ship.throttle = 1;

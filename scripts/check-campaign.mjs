@@ -83,11 +83,18 @@ for (const mission of MISSIONS) {
   const offCanon = mineNames.filter((n) => n && !canonNames.has(String(n).toLowerCase()));
   if (offCanon.length && verbose) lines.push(`    off-canon names: ${offCanon.join(', ')}`);
 
-  // A protect objective needs a charge that actually spawns on your side.
+  // A protect objective needs a charge that actually spawns on your side, and
+  // a raid needs marks that actually spawn on theirs.
   if (mission.objective.kind === 'protect') {
     const onside = [...(mission.attach ?? []), ...(mission.civilians?.A ?? [])]
       .some((e) => e.name === mission.objective.ship);
     if (!onside) { lines.push(`  ✗ protect charge "${mission.objective.ship}" is not in the line-up`); errors += 1; }
+  }
+  if (mission.objective.kind === 'raid') {
+    const hostiles = [...mission.enemy, ...(mission.civilians?.B ?? [])].map((e) => e.name);
+    for (const mark of mission.objective.targets) {
+      if (!hostiles.includes(mark)) { lines.push(`  ✗ raid target "${mark}" is not on the hostile side`); errors += 1; }
+    }
   }
   if (lines.length) console.log(`${mission.id}  ${mission.title}\n${lines.join('\n')}`);
 }
